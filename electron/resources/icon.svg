@@ -1,0 +1,68 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a1f"/>
+      <stop offset="100%" stop-color="#13132e"/>
+    </linearGradient>
+    <linearGradient id="knight" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#22e3ff"/>
+      <stop offset="100%" stop-color="#7b61ff"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square backdrop -->
+  <rect x="36" y="36" width="440" height="440" rx="104" fill="url(#bg)"/>
+  <rect x="36.5" y="36.5" width="439" height="439" rx="103.5" fill="none" stroke="#22e3ff" stroke-opacity="0.22" stroke-width="3"/>
+
+  <!-- AI circuit nodes -->
+  <g stroke="#22e3ff" stroke-opacity="0.16" stroke-width="2.5" fill="none">
+    <path d="M96 196 L150 196"/>
+    <path d="M416 210 L360 210"/>
+    <path d="M110 330 L156 330"/>
+  </g>
+  <g fill="#22e3ff" fill-opacity="0.5">
+    <circle cx="96" cy="196" r="5"/>
+    <circle cx="416" cy="210" r="5"/>
+    <circle cx="110" cy="330" r="5"/>
+  </g>
+
+  <!-- Classic chess knight, horse head facing left -->
+  <g filter="url(#glow)">
+    <path fill="url(#knight)" d="
+      M250 110
+      c6 16 2 28 -2 34
+      c40 18 66 58 66 106
+      c0 54 -20 84 -20 116
+      h36
+      c9 0 16 7 16 16
+      v22
+      h-188
+      v-20
+      c0 -40 22 -64 52 -86
+      c16 -12 8 -30 -8 -24
+      c-20 8 -38 4 -50 -12
+      c-9 -12 -7 -24 0 -38
+      c8 -16 22 -26 30 -40
+      c-16 4 -28 14 -36 28
+      c-8 -20 -2 -42 14 -58
+      c10 -10 22 -16 34 -20
+      c14 -6 26 -16 34 -30
+      c2 -4 8 -4 10 0
+      c-2 12 -8 22 -16 30
+      c8 -6 18 -10 24 -14 z" />
+    <!-- eye -->
+    <circle cx="244" cy="172" r="9" fill="#0a0a1f"/>
+    <!-- nostril hint -->
+    <circle cx="186" cy="214" r="5" fill="#0a0a1f" fill-opacity="0.5"/>
+  </g>
+
+  <!-- Base bar -->
+  <rect x="170" y="386" width="172" height="14" rx="7" fill="url(#knight)"/>
+</svg>

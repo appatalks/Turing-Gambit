@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Turing-Gambit
+Comment=AI Chess Match — Put AI models head-to-head
+Exec=/home/mj420/Desktop/TOR/MEMORY_CORE/Logs/2026/GIT/Turing-Gambit/turing-gambit.sh
+Icon=/home/mj420/Desktop/TOR/MEMORY_CORE/Logs/2026/GIT/Turing-Gambit/electron/resources/icon.png
+Terminal=false
+Type=Application
+Categories=Game;BoardGame;Education;
+StartupWMClass=turing-gambit

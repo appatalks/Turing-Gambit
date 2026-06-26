@@ -1,0 +1,36 @@
+appId: com.turing-gambit.app
+productName: Turing-Gambit
+
+directories:
+  output: release
+  buildResources: electron/resources
+
+files:
+  - electron/**/*
+  - client/dist/**/*
+  - package.json
+
+extraResources:
+  - from: dist-electron/server.cjs
+    to: server.cjs
+  - from: .env.example
+    to: .env.example
+
+publish:
+  provider: github
+  owner: appatalks
+  repo: Turing-Gambit
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Game
+  icon: electron/resources/icon.png
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.board-games
+  hardenedRuntime: true
