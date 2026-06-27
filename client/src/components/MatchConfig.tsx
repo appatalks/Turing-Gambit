@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { MatchConfig, ProviderConfig, ProviderType } from '../types';
+import type { MatchConfig, ProviderConfig, ProviderType, GameType } from '../types';
 import { PROVIDER_OPTIONS } from '../types';
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
 }
 
 const DEFAULT_CONFIG: MatchConfig = {
+  game: 'chess',
   white: { type: 'ollama', model: 'llama3.1' },
   black: { type: 'ollama', model: 'llama3.1' },
   maxRetries: 5,
@@ -59,8 +60,24 @@ export function MatchConfigPanel({ onStart }: Props) {
           <span className="title-icon">♚</span>
         </h1>
         <p className="config-subtitle text-secondary">
-          AI Chess Match &nbsp;|&nbsp; Configure two AI models and watch them battle on the board
+          AI Match &nbsp;|&nbsp; Configure two AI models and watch them battle on the board
         </p>
+      </div>
+
+      {/* Game selector */}
+      <div className="game-selector">
+        <button
+          className={`game-btn ${config.game === 'chess' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'chess' }))}
+        >
+          ♟ Chess
+        </button>
+        <button
+          className={`game-btn ${config.game === 'checkers' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'checkers' }))}
+        >
+          ⬤ Checkers
+        </button>
       </div>
 
       <div className="config-panels">

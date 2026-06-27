@@ -67,13 +67,21 @@ export function PlayerPanel({
       {/* Captured pieces */}
       {capturedPieces.length > 0 && (
         <div className="panel-section">
-          <label>Captured</label>
+          <label>Captured ({capturedPieces.length})</label>
           <div className="captured-pieces">
-            {sortPieces(capturedPieces).filter(p => 'pnbrqk'.includes(p)).map((p, i) => (
-              <span key={i} className="captured-piece" title={PIECE_NAMES[p] || p}>
-                {CAPTURED_SYMBOLS[color][p] || p}
-              </span>
-            ))}
+            {sortPieces(capturedPieces).map((p, i) =>
+              p === 'c' ? (
+                // Checkers piece
+                <span key={i} className="captured-piece" title="Checker">
+                  {color === 'white' ? '⚫' : '⚪'}
+                </span>
+              ) : 'pnbrqk'.includes(p) ? (
+                // Chess piece
+                <span key={i} className="captured-piece" title={PIECE_NAMES[p] || p}>
+                  {CAPTURED_SYMBOLS[color][p] || p}
+                </span>
+              ) : null
+            )}
           </div>
         </div>
       )}

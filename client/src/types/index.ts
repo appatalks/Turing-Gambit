@@ -20,7 +20,10 @@ export interface ProviderConfig {
 
 // ─── Match Types ────────────────────────────────────────
 
+export type GameType = 'chess' | 'checkers';
+
 export interface MatchConfig {
+  game: GameType;
   white: ProviderConfig;
   black: ProviderConfig;
   maxRetries: number;
@@ -36,7 +39,9 @@ export type GameStatus =
   | 'draw'
   | 'resigned'
   | 'invalid_move_failure'
-  | 'max_moves_reached';
+  | 'max_moves_reached'
+  | 'black_wins'
+  | 'white_wins';
 
 export type MatchStatus =
   | 'configuring'
@@ -78,6 +83,7 @@ export interface MatchMetrics {
 
 export interface MatchState {
   id: string;
+  game: GameType;
   status: MatchStatus;
   fen: string;
   turn: 'w' | 'b';
@@ -90,6 +96,7 @@ export interface MatchState {
   thinking: boolean;
   thinkingPlayer: 'w' | 'b' | null;
   awaitingHuman: boolean;
+  legalMoves?: string[];
   pgn: string;
   lastMove?: { from: string; to: string };
   winner?: 'white' | 'black' | 'draw' | null;

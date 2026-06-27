@@ -19,6 +19,8 @@ const STATUS_LABELS: Record<GameStatus, { text: string; cls: string }> = {
   resigned: { text: 'Resigned', cls: 'badge-error' },
   invalid_move_failure: { text: 'Forfeit', cls: 'badge-error' },
   max_moves_reached: { text: 'Max Moves', cls: 'badge-paused' },
+  black_wins: { text: 'Black Wins', cls: 'badge-completed' },
+  white_wins: { text: 'White Wins', cls: 'badge-completed' },
 };
 
 export function ControlPanel({

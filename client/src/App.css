@@ -9,9 +9,22 @@
   display: flex;
   flex-direction: column;
   padding: 12px;
+  padding-top: 4px;
   gap: 12px;
   position: relative;
   border-radius: 10px;
+}
+
+/* Thin grab bar at the very top — always draggable */
+.app::before {
+  content: '';
+  display: block;
+  height: 22px;
+  min-height: 22px;
+  -webkit-app-region: drag;
+  app-region: drag;
+  border-radius: 10px 10px 0 0;
+  cursor: grab;
 }
 
 /* ── Window controls (frameless) ───────────────────── */
@@ -92,6 +105,37 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+/* ── Game selector ─────────────────────────────────── */
+
+.game-selector {
+  display: flex;
+  gap: 12px;
+}
+
+.game-btn {
+  padding: 10px 28px;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-btn:hover {
+  border-color: var(--border-glow);
+  color: var(--text-primary);
+}
+
+.game-btn-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-purple));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(0, 212, 255, 0.25);
+}
+
 /* ── Config screen ────────────────────────────────── */
 
 .config-screen {
@@ -108,11 +152,11 @@
 .config-header {
   text-align: center;
   padding-top: 12px;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .config-title {
-  -webkit-app-region: drag;
-  app-region: drag;
   font-size: 2.2rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -223,19 +267,28 @@
   border-radius: var(--radius);
 }
 
-/* ── Arena header (also serves as frameless window drag region) ── */
+/* ── Arena header (frameless window drag region) ─────── */
 
 .arena-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 16px;
-}
-
-/* Only the brand text is draggable — prevents conflict with buttons */
-.arena-brand {
   -webkit-app-region: drag;
   app-region: drag;
+}
+
+/* Interactive elements inside the header opt out of drag */
+.arena-header button,
+.arena-header input,
+.arena-header label,
+.arena-header .music-player,
+.arena-header .arena-header-right {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.arena-brand {
   display: flex;
   align-items: center;
   gap: 8px;

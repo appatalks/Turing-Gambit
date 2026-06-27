@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useSocket } from './hooks/useSocket';
 import { MatchConfigPanel } from './components/MatchConfig';
 import { ChessBoardView } from './components/ChessBoard';
+import { CheckersBoardView } from './components/CheckersBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -132,19 +133,30 @@ export default function App() {
               {status === 'completed'
                 ? 'Game Over'
                 : isHumanTurn
-                  ? `Your move (${turn === 'w' ? 'White' : 'Black'}) — drag a piece`
+                  ? `Your move (${turn === 'w' ? 'White' : 'Black'}) — ${matchState.game === 'checkers' ? 'click a piece' : 'drag a piece'}`
                   : thinking
                     ? `${turn === 'w' ? 'White' : 'Black'} is thinking...`
                     : `${turn === 'w' ? 'White' : 'Black'} to move`}
             </span>
           </div>
-          <ChessBoardView
-            fen={fen}
-            lastMove={lastMove}
-            interactive={isHumanTurn}
-            boardOrientation={boardOrientation}
-            onHumanMove={submitHumanMove}
-          />
+          {matchState.game === 'checkers' ? (
+            <CheckersBoardView
+              boardState={fen}
+              lastMove={lastMove ? { from: parseInt(lastMove.from), to: parseInt(lastMove.to) } : undefined}
+              interactive={isHumanTurn}
+              boardOrientation={boardOrientation === 'black' ? 'black' : 'white'}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : (
+            <ChessBoardView
+              fen={fen}
+              lastMove={lastMove}
+              interactive={isHumanTurn}
+              boardOrientation={boardOrientation}
+              onHumanMove={submitHumanMove}
+            />
+          )}
           <ControlPanel
             status={status}
             gameStatus={gameStatus}

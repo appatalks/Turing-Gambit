@@ -7,6 +7,7 @@ import {
   MatchMetrics,
   MoveRecord,
   GameStatus,
+  CapturedPieces,
 } from './types.js';
 import type { AIProvider } from './types.js';
 import { ChessEngine, computeCapturedPieces } from './games/chess/engine.js';
@@ -16,6 +17,12 @@ import {
   parseMoveFromResponse,
   extractMoveCandidates,
 } from './games/chess/prompt.js';
+import { CheckersEngine } from './games/checkers/engine.js';
+import {
+  buildCheckersPrompt,
+  buildCheckersRetryPrompt,
+  parseCheckersMoveFromResponse,
+} from './games/checkers/prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -68,7 +75,8 @@ export class MatchManager {
 class Match {
   readonly id: string;
   private config: MatchConfig;
-  private engine: ChessEngine;
+  private chessEngine: ChessEngine | null = null;
+  private checkersEngine: CheckersEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -88,18 +96,141 @@ class Match {
   private whiteProvider: AIProvider | null = null;
   private blackProvider: AIProvider | null = null;
 
+  private get isCheckers(): boolean {
+    return this.config.game === 'checkers';
+  }
+
   constructor(config: MatchConfig, socket: Socket) {
     this.id = uuid();
     this.config = config;
-    this.engine = new ChessEngine();
+    if (config.game === 'checkers') {
+      this.checkersEngine = new CheckersEngine();
+    } else {
+      this.chessEngine = new ChessEngine();
+    }
     this.socket = socket;
-    // Create providers once per match (persistent sessions)
     if (config.white.type !== 'human') {
       this.whiteProvider = createProvider(config.white);
     }
     if (config.black.type !== 'human') {
       this.blackProvider = createProvider(config.black);
     }
+  }
+
+  // ── Game-agnostic engine helpers ───────────────────
+
+  private getTurn(): 'w' | 'b' {
+    return this.isCheckers ? this.checkersEngine!.turn() : this.chessEngine!.turn();
+  }
+
+  private getFen(): string {
+    return this.isCheckers ? this.checkersEngine!.boardState() : this.chessEngine!.fen();
+  }
+
+  private getPgn(): string {
+    if (this.isCheckers) {
+      return this.moveHistory.map((m) => m.san).join(', ');
+    }
+    return this.chessEngine!.pgn();
+  }
+
+  private getLegalMoves(): string[] {
+    return this.isCheckers
+      ? this.checkersEngine!.legalMovesNotation()
+      : this.chessEngine!.legalMovesUci();
+  }
+
+  private isOver(): boolean {
+    return this.isCheckers ? this.checkersEngine!.isGameOver() : this.chessEngine!.isGameOver();
+  }
+
+  private buildPrompt(turn: 'w' | 'b', legalMoves: string[]): string {
+    if (this.isCheckers) {
+      return buildCheckersPrompt({
+        color: turn === 'w' ? 'White' : 'Black',
+        board: this.checkersEngine!.boardForPrompt(),
+        legalMoves,
+        moveHistory: this.moveHistory,
+      });
+    }
+    return buildChessPrompt({
+      color: turn === 'w' ? 'White' : 'Black',
+      fen: this.chessEngine!.fen(),
+      legalMoves,
+      moveHistory: this.moveHistory,
+      gameStatus: this.chessEngine!.gameStatus(),
+    });
+  }
+
+  private buildRetry(invalidMove: string, legalMoves: string[]): string {
+    if (this.isCheckers) {
+      return buildCheckersRetryPrompt(invalidMove, legalMoves);
+    }
+    return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
+  }
+
+  private parseResponse(raw: string, legalMoves: string[]): string | null {
+    if (this.isCheckers) {
+      const parsed = parseCheckersMoveFromResponse(raw);
+      return parsed && legalMoves.includes(parsed) ? parsed : null;
+    }
+    // Chess: UCI primary parser + SAN fallback
+    const parsed = parseMoveFromResponse(raw);
+    if (parsed && legalMoves.includes(parsed)) return parsed;
+    const candidates = extractMoveCandidates(raw);
+    for (const c of candidates) {
+      if (legalMoves.includes(c)) return c;
+      const fromSan = this.chessEngine!.trySanToUci(c);
+      if (fromSan && legalMoves.includes(fromSan)) return fromSan;
+    }
+    return null;
+  }
+
+  private applyMove(move: string): { san: string; captured?: string; from: string; to: string } | null {
+    if (this.isCheckers) {
+      const result = this.checkersEngine!.makeMove(move);
+      if (!result) return null;
+      const parts = move.split('-');
+      return {
+        san: result.san,
+        captured: result.captured,
+        from: parts[0],
+        to: parts[parts.length - 1],
+      };
+    }
+    const result = this.chessEngine!.makeMove(move);
+    if (!result) return null;
+    return { san: result.san, captured: result.captured, from: result.from, to: result.to };
+  }
+
+  private checkGameOver(turn: 'w' | 'b'): void {
+    if (!this.isOver()) return;
+
+    if (this.isCheckers) {
+      const status = this.checkersEngine!.gameStatus();
+      if (status === 'black_wins') {
+        this.endGame('black', 'black_wins', 'Black wins — White has no moves');
+      } else if (status === 'white_wins') {
+        this.endGame('white', 'white_wins', 'White wins — Black has no moves');
+      } else {
+        this.endGame('draw', 'draw', 'Draw (40-move rule)');
+      }
+    } else {
+      if (this.chessEngine!.gameStatus() === 'checkmate') {
+        this.endGame(
+          turn === 'w' ? 'white' : 'black',
+          'checkmate',
+          `Checkmate — ${turn === 'w' ? 'White' : 'Black'} wins`,
+        );
+      } else {
+        const reason = this.chessEngine!.drawReason();
+        this.endGame('draw', this.chessEngine!.gameStatus() as GameStatus, reason);
+      }
+    }
+  }
+
+  private getCapturedPieces(): CapturedPieces {
+    return computeCapturedPieces(this.moveHistory);
   }
 
   async start(): Promise<void> {
@@ -160,9 +291,8 @@ class Match {
   }
 
   submitHumanMove(uci: string): void {
-    // Only accept if we're actually waiting and the move is legal
     if (!this.awaitingHuman || !this.humanMoveResolver) return;
-    if (!this.engine.legalMovesUci().includes(uci)) return;
+    if (!this.getLegalMoves().includes(uci)) return;
     const resolve = this.humanMoveResolver;
     this.humanMoveResolver = null;
     resolve(uci);
@@ -170,7 +300,7 @@ class Match {
 
   export(): { pgn: string; json: object } {
     return {
-      pgn: this.engine.pgn(),
+      pgn: this.getPgn(),
       json: this.buildState(),
     };
   }
@@ -178,27 +308,25 @@ class Match {
   // ── Game Loop ──────────────────────────────────────────
 
   private async gameLoop(): Promise<void> {
-    while (this.running && !this.engine.isGameOver()) {
-      // Check max moves
+    while (this.running && !this.isOver()) {
       if (this.moveHistory.length >= this.config.maxMoves * 2) {
         this.endGame('draw', 'max_moves_reached', 'Maximum moves reached');
         return;
       }
 
-      // Pause / step handling
       if (this.paused && !this.stepMode) {
         await this.waitForResume();
         if (!this.running) return;
       }
       if (this.stepMode) {
-        this.stepMode = false; // consume the step
+        this.stepMode = false;
       }
 
-      const turn = this.engine.turn();
+      const turn = this.getTurn();
       const providerConfig = turn === 'w' ? this.config.white : this.config.black;
-      const legalMovesUci = this.engine.legalMovesUci();
+      const legalMoves = this.getLegalMoves();
 
-      let moveUci: string | null = null;
+      let moveStr: string | null = null;
       let rawResponse = '';
       let tokensUsed: number | undefined;
       let latencyMs = 0;
@@ -207,7 +335,6 @@ class Match {
       let currentPrompt = '';
 
       if (providerConfig.type === 'human') {
-        // ── Human turn: wait for a move from the client ──
         this.awaitingHuman = true;
         this.thinking = false;
         this.thinkingPlayer = null;
@@ -216,22 +343,15 @@ class Match {
         const waitStart = Date.now();
         const submitted = await this.waitForHumanMove();
         this.awaitingHuman = false;
-
         if (!this.running || !submitted) return;
 
-        moveUci = submitted;
+        moveStr = submitted;
         latencyMs = Date.now() - waitStart;
         rawResponse = 'Human move';
       } else {
         // ── AI turn ──
         const provider = (turn === 'w' ? this.whiteProvider : this.blackProvider)!;
-        const prompt = buildChessPrompt({
-          color: turn === 'w' ? 'White' : 'Black',
-          fen: this.engine.fen(),
-          legalMoves: legalMovesUci,
-          moveHistory: this.moveHistory,
-          gameStatus: this.engine.gameStatus(),
-        });
+        const prompt = this.buildPrompt(turn, legalMoves);
 
         this.thinking = true;
         this.thinkingPlayer = turn;
@@ -251,7 +371,6 @@ class Match {
             const result = await provider.getMove({ prompt: currentPrompt, onChunk });
             rawResponse = result.rawResponse;
 
-            // For non-streaming providers, emit the full response as one chunk
             if (!streamed && rawResponse) {
               this.socket.emit('thinking-chunk', { color: turn, text: rawResponse });
             }
@@ -259,51 +378,28 @@ class Match {
             tokensUsed = (tokensUsed ?? 0) + (result.tokensUsed ?? 0);
             latencyMs = Date.now() - overallStart;
 
-            // 1. Try primary UCI parser
-            const parsed = parseMoveFromResponse(rawResponse);
-            if (parsed && legalMovesUci.includes(parsed)) {
-              moveUci = parsed;
-              break;
-            }
+            // Parse using game-appropriate parser
+            moveStr = this.parseResponse(rawResponse, legalMoves);
+            if (moveStr) break;
 
-            // 2. Fallback: extract all candidates (UCI + SAN) and match
-            if (!moveUci) {
-              const candidates = extractMoveCandidates(rawResponse);
-              for (const c of candidates) {
-                if (legalMovesUci.includes(c)) { moveUci = c; break; }
-                const fromSan = this.engine.trySanToUci(c);
-                if (fromSan && legalMovesUci.includes(fromSan)) { moveUci = fromSan; break; }
-              }
-            }
-
-            if (moveUci) break;
-
-            // Invalid move — log for debugging
-            const attemptStr = parsed || rawResponse.substring(0, 120);
-            console.log(`[Arena] Invalid move attempt (${turn === 'w' ? 'White' : 'Black'}): "${attemptStr}" | raw: "${rawResponse.substring(0, 200)}"`);
+            // Invalid move
+            const attemptStr = rawResponse.substring(0, 120);
+            console.log(`[Arena] Invalid move attempt (${turn === 'w' ? 'White' : 'Black'}): "${attemptStr}"`);
             invalidAttempts.push(attemptStr);
             retryCount++;
 
-            currentPrompt = buildRetryPrompt({
-              invalidMove: attemptStr,
-              legalMoves: legalMovesUci,
-              fen: this.engine.fen(),
-            });
+            currentPrompt = this.buildRetry(attemptStr, legalMoves);
           } catch (err: any) {
             invalidAttempts.push(`Error: ${err.message}`);
             retryCount++;
             if (attempt === this.config.maxRetries) break;
             await this.delay(1000);
-            currentPrompt = buildRetryPrompt({
-              invalidMove: `Error: ${err.message}`,
-              legalMoves: legalMovesUci,
-              fen: this.engine.fen(),
-            });
+            currentPrompt = this.buildRetry(`Error: ${err.message}`, legalMoves);
           }
         }
       }
 
-      if (!moveUci || !this.running) {
+      if (!moveStr || !this.running) {
         if (this.running) {
           const side = turn === 'w' ? 'White' : 'Black';
           this.endGame(
@@ -316,9 +412,8 @@ class Match {
       }
 
       // Apply move
-      const result = this.engine.makeMove(moveUci);
+      const result = this.applyMove(moveStr);
       if (!result) {
-        // Should never happen since we validated, but handle gracefully
         this.endGame(
           turn === 'w' ? 'black' : 'white',
           'invalid_move_failure',
@@ -331,8 +426,8 @@ class Match {
         moveNumber: Math.floor(this.moveHistory.length / 2) + 1,
         color: turn,
         san: result.san,
-        uci: moveUci,
-        fen: this.engine.fen(),
+        uci: moveStr,
+        fen: this.getFen(),
         latencyMs,
         tokensUsed,
         retryCount,
@@ -344,30 +439,18 @@ class Match {
       this.moveHistory.push(record);
 
       if (result.captured) {
-        console.log(`[Arena] ${turn === 'w' ? 'White' : 'Black'} captured ${result.captured} with ${result.san}`);
+        console.log(`[Arena] ${turn === 'w' ? 'White' : 'Black'} captured with ${result.san}`);
       }
 
       this.lastMove = { from: result.from, to: result.to };
       this.thinking = false;
       this.thinkingPlayer = null;
-      this.gameStatus = this.engine.gameStatus();
 
-      // Check game over conditions
-      if (this.engine.isGameOver()) {
-        if (this.engine.gameStatus() === 'checkmate') {
-          this.endGame(
-            turn === 'w' ? 'white' : 'black',
-            'checkmate',
-            `Checkmate — ${turn === 'w' ? 'White' : 'Black'} wins`,
-          );
-        } else {
-          const reason = this.engine.drawReason();
-          const status = this.engine.gameStatus() as GameStatus;
-          this.endGame('draw', status, reason);
-        }
-        return;
-      }
+      // Check game over
+      this.checkGameOver(turn);
+      if (this.status === 'completed') return;
 
+      this.gameStatus = 'active';
       this.emitState();
 
       // Delay between moves (auto mode)
@@ -427,11 +510,12 @@ class Match {
   private buildState(): MatchState {
     return {
       id: this.id,
+      game: this.config.game || 'chess',
       status: this.status,
-      fen: this.engine.fen(),
-      turn: this.engine.turn(),
+      fen: this.getFen(),
+      turn: this.getTurn(),
       moveHistory: this.moveHistory,
-      capturedPieces: computeCapturedPieces(this.moveHistory),
+      capturedPieces: this.getCapturedPieces(),
       gameStatus: this.gameStatus,
       white: this.config.white,
       black: this.config.black,
@@ -439,7 +523,8 @@ class Match {
       thinking: this.thinking,
       thinkingPlayer: this.thinkingPlayer,
       awaitingHuman: this.awaitingHuman,
-      pgn: this.engine.pgn(),
+      legalMoves: this.awaitingHuman ? this.getLegalMoves() : undefined,
+      pgn: this.getPgn(),
       lastMove: this.lastMove,
       winner: this.winner,
       endReason: this.endReason ?? undefined,
