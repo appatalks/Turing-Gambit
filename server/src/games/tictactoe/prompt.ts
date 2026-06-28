@@ -13,9 +13,12 @@ MOVE: <number>`;
 }
 
 export function buildTTTRetryPrompt(invalidMove: string, legalMoves: string[]): string {
-  return `"${invalidMove}" is not valid. Available: ${legalMoves.join(', ')}
+  const shuffled = [...legalMoves].sort(() => Math.random() - 0.5);
+  const pick = shuffled[0];
+  return `"${invalidMove}" is not valid. Available: ${shuffled.join(', ')}
 
-Reply: MOVE: <number>`;
+Reply: MOVE: ${pick}
+(or any other number from the list above)`;
 }
 
 export function parseTTTMoveFromResponse(response: string): string | null {

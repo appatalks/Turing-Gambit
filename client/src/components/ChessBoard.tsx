@@ -7,6 +7,7 @@ interface Props {
   interactive?: boolean;
   boardOrientation?: 'white' | 'black';
   onHumanMove?: (uci: string) => void;
+  gameStatus?: string;
 }
 
 export function ChessBoardView({
@@ -15,6 +16,7 @@ export function ChessBoardView({
   interactive = false,
   boardOrientation = 'white',
   onHumanMove,
+  gameStatus,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [boardWidth, setBoardWidth] = useState(480);
@@ -40,6 +42,30 @@ export function ChessBoardView({
     highlightStyles[lastMove.to] = {
       background: 'radial-gradient(circle, rgba(0,212,255,0.4) 40%, transparent 70%)',
     };
+  }
+
+  // Highlight the king square when in check
+  if (gameStatus === 'check') {
+    const parts = fen.split(' ');
+    const activeColor = parts[1]; // 'w' or 'b' — side to move is the one in check
+    const kingChar = activeColor === 'w' ? 'K' : 'k';
+    const ranks = parts[0].split('/');
+    for (let r = 0; r < ranks.length; r++) {
+      let col = 0;
+      for (const ch of ranks[r]) {
+        if (ch >= '1' && ch <= '8') { col += parseInt(ch); }
+        else {
+          if (ch === kingChar) {
+            const sq = String.fromCharCode(97 + col) + (8 - r);
+            highlightStyles[sq] = {
+              background: 'radial-gradient(circle, rgba(255,0,0,0.6) 30%, rgba(255,0,0,0.2) 70%, transparent 90%)',
+              boxShadow: 'inset 0 0 12px rgba(255,0,0,0.8)',
+            };
+          }
+          col++;
+        }
+      }
+    }
   }
 
   function handleDrop(from: string, to: string, piece: string): boolean {

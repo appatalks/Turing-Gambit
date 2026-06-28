@@ -6,9 +6,13 @@ export function buildChessPrompt(input: ChessPromptInput): string {
     ? historyStr.split(' ').slice(-40).join(' ')
     : '';
 
+  const checkNotice = input.gameStatus === 'check'
+    ? '\n⚠ The opponent is in CHECK!'
+    : '';
+
   return `You are a chess engine playing as ${input.color}.
 
-Position (FEN): ${input.fen}${recentHistory ? `\nRecent moves: ${recentHistory}` : ''}
+Position (FEN): ${input.fen}${recentHistory ? `\nRecent moves: ${recentHistory}` : ''}${checkNotice}
 
 Legal moves (UCI): ${input.legalMoves.join(', ')}
 

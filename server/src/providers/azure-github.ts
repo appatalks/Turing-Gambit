@@ -27,7 +27,7 @@ export class AzureGitHubProvider extends BaseProvider {
         model: this.config.model,
         messages,
         temperature: request.temperature ?? this.config.temperature ?? 0.3,
-        max_tokens: this.config.maxTokens ?? 256,
+        max_tokens: this.config.maxTokens ?? 2048,
       },
       (json) => ({
         text: json.choices?.[0]?.message?.content ?? '',

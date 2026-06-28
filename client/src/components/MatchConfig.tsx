@@ -335,7 +335,7 @@ function PlayerConfigCard({
                 min={50}
                 max={4096}
                 step={50}
-                value={provider.maxTokens ?? 256}
+                value={provider.maxTokens ?? 2048}
                 onChange={(e) => onUpdate({ maxTokens: +e.target.value })}
               />
             </div>

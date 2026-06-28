@@ -257,6 +257,7 @@ export default function App() {
               interactive={isHumanTurn}
               boardOrientation={boardOrientation}
               onHumanMove={submitHumanMove}
+              gameStatus={gameStatus}
             />
           )}
           <ControlPanel

@@ -12,9 +12,12 @@ MOVE: <edge>`;
 }
 
 export function buildDotsAndBoxesRetryPrompt(invalidMove: string, legalMoves: string[]): string {
-  return `"${invalidMove}" is not valid. Available edges: ${legalMoves.join(', ')}
+  const shuffled = [...legalMoves].sort(() => Math.random() - 0.5);
+  const pick = shuffled[0];
+  return `"${invalidMove}" is not valid. Available edges: ${shuffled.join(', ')}
 
-Reply: MOVE: <edge>`;
+Reply: MOVE: ${pick}
+(or any other edge from the list above)`;
 }
 
 export function parseDotsAndBoxesMove(response: string): string | null {

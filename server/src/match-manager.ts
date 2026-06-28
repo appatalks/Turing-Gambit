@@ -137,6 +137,7 @@ class Match {
   private get isPD(): boolean { return this.config.game === 'prisonersdilemma'; }
   private get isDebate(): boolean { return this.config.game === 'debate'; }
   private get isRisk(): boolean { return this.config.game === 'risk'; }
+  private get isChess(): boolean { return this.config.game === 'chess' || !this.config.game; }
 
   constructor(config: MatchConfig, socket: Socket) {
     this.id = uuid();
@@ -656,11 +657,11 @@ class Match {
         }
       }
 
-      // Battleship fallback: auto-pick a legal cell rather than forfeiting.
-      // This lets the game continue even when a local model is stuck in a loop.
-      if (!moveStr && this.running && this.isBS && legalMoves.length > 0) {
+      // Fallback: auto-pick a legal move for games where forfeiting
+      // would be pointless (Battleship, Dots & Boxes, Tic-Tac-Toe).
+      if (!moveStr && this.running && (this.isBS || this.isDAB || this.isTTT) && legalMoves.length > 0) {
         moveStr = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-        console.log(`[Arena] Battleship auto-pick fallback: ${moveStr}`);
+        console.log(`[Arena] Auto-pick fallback: ${moveStr}`);
       }
 
       if (!moveStr || !this.running) {
@@ -714,7 +715,7 @@ class Match {
       this.checkGameOver(turn);
       if (this.status === 'completed') return;
 
-      this.gameStatus = 'active';
+      this.gameStatus = this.isChess ? this.chessEngine!.gameStatus() : 'active';
       this.emitState();
 
       // Delay between moves (auto mode)
