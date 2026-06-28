@@ -6,7 +6,7 @@
 export type DebateColor = 'w' | 'b';
 export type DebateStatus = 'active' | 'white_wins' | 'black_wins' | 'draw';
 
-const MAX_ROUNDS = 3; // arguments per side
+const MAX_ROUNDS = 10; // arguments per side
 
 const DEFAULT_TOPICS = [
   'Artificial general intelligence will be a net benefit to humanity.',

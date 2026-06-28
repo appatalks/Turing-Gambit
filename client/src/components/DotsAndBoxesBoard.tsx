@@ -5,8 +5,8 @@ interface Props {
   legalMoves?: string[];
 }
 
-const SIZE = 8;
-const DOTS = 9;
+const SIZE = 6;
+const DOTS = 7;
 
 export function DotsAndBoxesBoard({
   boardState,

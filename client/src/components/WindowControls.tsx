@@ -2,10 +2,11 @@ import { useRef } from 'react';
 
 interface Props {
   onSettings?: () => void;
+  onScoreboard?: () => void;
   onMusicFiles?: (files: FileList) => void;
 }
 
-export function WindowControls({ onSettings, onMusicFiles }: Props) {
+export function WindowControls({ onSettings, onScoreboard, onMusicFiles }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   function minimize() {
@@ -46,6 +47,9 @@ export function WindowControls({ onSettings, onMusicFiles }: Props) {
             hidden
           />
         </>
+      )}
+      {onScoreboard && (
+        <button className="win-btn win-scoreboard" onClick={onScoreboard} title="Scoreboard">🏆</button>
       )}
       {onSettings && (
         <button className="win-btn win-settings" onClick={onSettings} title="Settings">⚙</button>

@@ -69,6 +69,10 @@
   font-size: 0.85rem;
 }
 
+.win-scoreboard {
+  font-size: 0.8rem;
+}
+
 .win-close:hover {
   background: rgba(255, 68, 102, 0.8);
   color: #fff;
@@ -165,18 +169,6 @@
 }
 .autoplay-toggle input { accent-color: var(--accent); width: auto; }
 
-/* ── Trophy / scoreboard button ────────────────────── */
-
-.trophy-btn {
-  position: fixed;
-  top: 12px;
-  right: 120px;
-  z-index: 50;
-  font-size: 1.1rem;
-  opacity: 0.7;
-}
-.trophy-btn:hover { opacity: 1; }
-
 /* ── Scoreboard ────────────────────────────────────── */
 
 .scoreboard-modal {
@@ -260,26 +252,26 @@
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
-  padding: 40px 0;
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  gap: 16px;
   animation: slideUp 0.5s ease-out;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  justify-content: center;
 }
 
 .config-header {
   text-align: center;
-  padding-top: 12px;
+  padding-top: 4px;
   -webkit-app-region: drag;
   app-region: drag;
 }
 
 .config-title {
-  font-size: 2.2rem;
+  font-size: 1.9rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   background: linear-gradient(135deg, var(--accent), var(--accent-purple));
@@ -290,12 +282,12 @@
 
 .title-icon {
   -webkit-text-fill-color: var(--accent-gold);
-  font-size: 1.8rem;
+  font-size: 1.6rem;
 }
 
 .config-subtitle {
-  margin-top: 8px;
-  font-size: 0.95rem;
+  margin-top: 4px;
+  font-size: 0.9rem;
 }
 
 .config-panels {

@@ -87,12 +87,11 @@ export default function App() {
   if (!matchState) {
     return (
       <div className="app">
-        <WindowControls onSettings={() => setSettingsOpen(true)} onMusicFiles={(f) => musicRef.current?.loadFiles(f)} />
+        <WindowControls onSettings={() => setSettingsOpen(true)} onScoreboard={() => setScoreboardOpen(true)} onMusicFiles={(f) => musicRef.current?.loadFiles(f)} />
         <div className="connection-dot" data-connected={connected} title={connected ? 'Connected' : 'Disconnected'} />
         {error && <div className="error-toast">{error}</div>}
         <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onSave={setKeys} />
         <Scoreboard open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} />
-        <button className="btn btn-secondary trophy-btn" onClick={() => setScoreboardOpen(true)} title="Scoreboard">🏆</button>
         <MusicPlayer ref={musicRef} />
         <MatchConfigPanel onStart={handleStart} autoPlay={autoPlay} onToggleAutoPlay={toggleAutoPlay} />
       </div>
