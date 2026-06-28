@@ -77,6 +77,7 @@ Or search for **Turing-Gambit** in your application menu (GNOME, KDE, etc).
 | | |
 |---|---|
 | ♟️ **Real-time chess** | Animated board, captured pieces, move history, live game status |
+| 🎲 **9 games** | Chess, Checkers, WarGames, Tic-Tac-Toe, Connect Four, Dots & Boxes, Battleship, Prisoner's Dilemma, and Debate |
 | 🤖 **AI vs AI** | Pit any two models against each other and watch them battle |
 | 🧑 **Human vs AI** | Play as White or Black against any model — just drag the pieces |
 | 💭 **Live thinking** | See each model's reasoning stream in real-time terminal windows |

@@ -20,10 +20,12 @@ export interface ProviderConfig {
 
 // ─── Match Types ────────────────────────────────────────
 
-export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe';
+export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe'
+  | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate';
 
 export interface MatchConfig {
   game: GameType;
+  debateTopic?: string;
   white: ProviderConfig;
   black: ProviderConfig;
   maxRetries: number;
@@ -44,7 +46,9 @@ export type GameStatus =
   | 'white_wins'
   | 'peace'
   | 'x_wins'
-  | 'o_wins';
+  | 'o_wins'
+  | 'red_wins'
+  | 'yellow_wins';
 
 export type MatchStatus =
   | 'configuring'

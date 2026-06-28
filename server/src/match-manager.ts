@@ -35,6 +35,16 @@ import {
   buildTTTRetryPrompt,
   parseTTTMoveFromResponse,
 } from './games/tictactoe/prompt.js';
+import { ConnectFourEngine } from './games/connectfour/engine.js';
+import { buildConnectFourPrompt, buildConnectFourRetryPrompt, parseConnectFourMove } from './games/connectfour/prompt.js';
+import { DotsAndBoxesEngine } from './games/dotsandboxes/engine.js';
+import { buildDotsAndBoxesPrompt, buildDotsAndBoxesRetryPrompt, parseDotsAndBoxesMove } from './games/dotsandboxes/prompt.js';
+import { BattleshipEngine } from './games/battleship/engine.js';
+import { buildBattleshipPrompt, buildBattleshipRetryPrompt, parseBattleshipMove } from './games/battleship/prompt.js';
+import { PrisonersDilemmaEngine } from './games/prisonersdilemma/engine.js';
+import { buildPDPrompt, buildPDRetryPrompt, parsePDMove } from './games/prisonersdilemma/prompt.js';
+import { DebateEngine } from './games/debate/engine.js';
+import { buildDebatePrompt, parseDebateMove } from './games/debate/prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -91,6 +101,11 @@ class Match {
   private checkersEngine: CheckersEngine | null = null;
   private wargamesEngine: WargamesEngine | null = null;
   private tttEngine: TicTacToeEngine | null = null;
+  private c4Engine: ConnectFourEngine | null = null;
+  private dabEngine: DotsAndBoxesEngine | null = null;
+  private bsEngine: BattleshipEngine | null = null;
+  private pdEngine: PrisonersDilemmaEngine | null = null;
+  private debateEngine: DebateEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -113,6 +128,11 @@ class Match {
   private get isCheckers(): boolean { return this.config.game === 'checkers'; }
   private get isWargames(): boolean { return this.config.game === 'wargames'; }
   private get isTTT(): boolean { return this.config.game === 'tictactoe'; }
+  private get isC4(): boolean { return this.config.game === 'connectfour'; }
+  private get isDAB(): boolean { return this.config.game === 'dotsandboxes'; }
+  private get isBS(): boolean { return this.config.game === 'battleship'; }
+  private get isPD(): boolean { return this.config.game === 'prisonersdilemma'; }
+  private get isDebate(): boolean { return this.config.game === 'debate'; }
 
   constructor(config: MatchConfig, socket: Socket) {
     this.id = uuid();
@@ -121,6 +141,11 @@ class Match {
       case 'checkers': this.checkersEngine = new CheckersEngine(); break;
       case 'wargames': this.wargamesEngine = new WargamesEngine(); break;
       case 'tictactoe': this.tttEngine = new TicTacToeEngine(); break;
+      case 'connectfour': this.c4Engine = new ConnectFourEngine(); break;
+      case 'dotsandboxes': this.dabEngine = new DotsAndBoxesEngine(); break;
+      case 'battleship': this.bsEngine = new BattleshipEngine(); break;
+      case 'prisonersdilemma': this.pdEngine = new PrisonersDilemmaEngine(); break;
+      case 'debate': this.debateEngine = new DebateEngine(config.debateTopic); break;
       default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
@@ -138,6 +163,11 @@ class Match {
     if (this.isCheckers) return this.checkersEngine!.turn();
     if (this.isWargames) return this.wargamesEngine!.turn();
     if (this.isTTT) return this.tttEngine!.turn();
+    if (this.isC4) return this.c4Engine!.turn();
+    if (this.isDAB) return this.dabEngine!.turn();
+    if (this.isBS) return this.bsEngine!.turn();
+    if (this.isPD) return this.pdEngine!.turn();
+    if (this.isDebate) return this.debateEngine!.turn();
     return this.chessEngine!.turn();
   }
 
@@ -145,6 +175,11 @@ class Match {
     if (this.isCheckers) return this.checkersEngine!.boardState();
     if (this.isWargames) return this.wargamesEngine!.boardState();
     if (this.isTTT) return this.tttEngine!.boardState();
+    if (this.isC4) return this.c4Engine!.boardState();
+    if (this.isDAB) return this.dabEngine!.boardState();
+    if (this.isBS) return this.bsEngine!.boardState();
+    if (this.isPD) return this.pdEngine!.boardState();
+    if (this.isDebate) return this.debateEngine!.boardState();
     return this.chessEngine!.fen();
   }
 
@@ -152,6 +187,8 @@ class Match {
     if (this.isCheckers) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isWargames) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isTTT) return this.moveHistory.map((m) => m.san).join(', ');
+    if (this.isDebate) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isC4 || this.isDAB || this.isBS || this.isPD) return this.moveHistory.map((m) => m.san).join(', ');
     return this.chessEngine!.pgn();
   }
 
@@ -159,6 +196,11 @@ class Match {
     if (this.isCheckers) return this.checkersEngine!.legalMovesNotation();
     if (this.isWargames) return this.wargamesEngine!.legalMoves();
     if (this.isTTT) return this.tttEngine!.legalMoves();
+    if (this.isC4) return this.c4Engine!.legalMoves();
+    if (this.isDAB) return this.dabEngine!.legalMoves();
+    if (this.isBS) return this.bsEngine!.legalMoves();
+    if (this.isPD) return this.pdEngine!.legalMoves();
+    if (this.isDebate) return this.debateEngine!.legalMoves();
     return this.chessEngine!.legalMovesUci();
   }
 
@@ -166,6 +208,11 @@ class Match {
     if (this.isCheckers) return this.checkersEngine!.isGameOver();
     if (this.isWargames) return this.wargamesEngine!.isGameOver();
     if (this.isTTT) return this.tttEngine!.isGameOver();
+    if (this.isC4) return this.c4Engine!.isGameOver();
+    if (this.isDAB) return this.dabEngine!.isGameOver();
+    if (this.isBS) return this.bsEngine!.isGameOver();
+    if (this.isPD) return this.pdEngine!.isGameOver();
+    if (this.isDebate) return this.debateEngine!.isGameOver();
     return this.chessEngine!.isGameOver();
   }
 
@@ -193,6 +240,21 @@ class Match {
         legalMoves,
       );
     }
+    if (this.isC4) {
+      return buildConnectFourPrompt(turn === 'w' ? 'Red' : 'Yellow', this.c4Engine!.boardForPrompt(), legalMoves);
+    }
+    if (this.isDAB) {
+      return buildDotsAndBoxesPrompt(turn === 'w' ? 'W' : 'B', this.dabEngine!.boardForPrompt(), legalMoves);
+    }
+    if (this.isBS) {
+      return buildBattleshipPrompt(turn === 'w' ? 'A' : 'B', this.bsEngine!.boardForPrompt(), legalMoves);
+    }
+    if (this.isPD) {
+      return buildPDPrompt(this.pdEngine!.boardForPrompt());
+    }
+    if (this.isDebate) {
+      return buildDebatePrompt(this.debateEngine!.boardForPrompt());
+    }
     return buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
@@ -206,6 +268,11 @@ class Match {
     if (this.isCheckers) return buildCheckersRetryPrompt(invalidMove, legalMoves);
     if (this.isWargames) return buildWargamesRetryPrompt(invalidMove, legalMoves);
     if (this.isTTT) return buildTTTRetryPrompt(invalidMove, legalMoves);
+    if (this.isC4) return buildConnectFourRetryPrompt(invalidMove, legalMoves);
+    if (this.isDAB) return buildDotsAndBoxesRetryPrompt(invalidMove, legalMoves);
+    if (this.isBS) return buildBattleshipRetryPrompt(invalidMove, legalMoves);
+    if (this.isPD) return buildPDRetryPrompt();
+    if (this.isDebate) return buildDebatePrompt(this.debateEngine!.boardForPrompt());
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
@@ -221,6 +288,26 @@ class Match {
     if (this.isTTT) {
       const p = parseTTTMoveFromResponse(raw);
       return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isC4) {
+      const p = parseConnectFourMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isDAB) {
+      const p = parseDotsAndBoxesMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isBS) {
+      const p = parseBattleshipMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isPD) {
+      const p = parsePDMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isDebate) {
+      // Free text — any non-empty response is valid.
+      return parseDebateMove(raw);
     }
     // Chess: UCI primary + SAN fallback
     const parsed = parseMoveFromResponse(raw);
@@ -251,6 +338,31 @@ class Match {
       if (!r) return null;
       return { san: r.san, captured: r.captured, from: move, to: move };
     }
+    if (this.isC4) {
+      const r = this.c4Engine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isDAB) {
+      const r = this.dabEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isBS) {
+      const r = this.bsEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isPD) {
+      const r = this.pdEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isDebate) {
+      const r = this.debateEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: 'arg', to: 'arg' };
+    }
     const r = this.chessEngine!.makeMove(move);
     if (!r) return null;
     return { san: r.san, captured: r.captured, from: r.from, to: r.to };
@@ -275,6 +387,32 @@ class Match {
       if (s === 'x_wins') this.endGame('white', 'x_wins', 'X wins!');
       else if (s === 'o_wins') this.endGame('black', 'o_wins', 'O wins!');
       else this.endGame('draw', 'draw', 'Draw — nobody wins');
+    } else if (this.isC4) {
+      const s = this.c4Engine!.gameStatus();
+      if (s === 'red_wins') this.endGame('white', 'red_wins', 'Red connects four!');
+      else if (s === 'yellow_wins') this.endGame('black', 'yellow_wins', 'Yellow connects four!');
+      else this.endGame('draw', 'draw', 'Draw — board full');
+    } else if (this.isDAB) {
+      const s = this.dabEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'White wins the boxes');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Black wins the boxes');
+      else this.endGame('draw', 'draw', 'Draw — boxes split');
+    } else if (this.isBS) {
+      const s = this.bsEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Side A sank the fleet');
+      else this.endGame('black', 'black_wins', 'Side B sank the fleet');
+    } else if (this.isPD) {
+      const s = this.pdEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'White scored higher');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Black scored higher');
+      else this.endGame('draw', 'draw', 'Draw — equal payoff');
+    } else if (this.isDebate) {
+      const s = this.debateEngine!.gameStatus();
+      const v = this.debateEngine!.getVerdict();
+      const reason = v ? v.reasoning : 'Judged';
+      if (s === 'white_wins') this.endGame('white', 'white_wins', `PRO wins. ${reason}`);
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', `CON wins. ${reason}`);
+      else this.endGame('draw', 'draw', `Draw. ${reason}`);
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
         this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',
@@ -366,6 +504,13 @@ class Match {
 
   private async gameLoop(): Promise<void> {
     while (this.running && !this.isOver()) {
+      // Debate judging: once both sides have made all arguments, run the judge.
+      if (this.isDebate && this.debateEngine!.argumentsComplete() && !this.debateEngine!.isJudged()) {
+        await this.runDebateJudge();
+        this.checkGameOver(this.getTurn());
+        return;
+      }
+
       if (this.moveHistory.length >= this.config.maxMoves * 2) {
         this.endGame('draw', 'max_moves_reached', 'Maximum moves reached');
         return;
@@ -528,6 +673,44 @@ class Match {
   }
 
   // ── Helpers ────────────────────────────────────────────
+
+  private async runDebateJudge(): Promise<void> {
+    const engine = this.debateEngine!;
+    const judgePrompt = engine.buildJudgePrompt();
+    // Use whichever side is backed by an AI provider as the impartial judge.
+    const provider = this.whiteProvider ?? this.blackProvider;
+
+    this.thinking = true;
+    this.thinkingPlayer = null;
+    this.socket.emit('thinking-chunk', { color: 'w', text: '\n\n⚖️ Judge is deliberating...\n' });
+    this.emitState();
+
+    if (!provider) {
+      // No AI available to judge (both human) — default to draw.
+      engine.applyVerdict('VERDICT: DRAW');
+      this.thinking = false;
+      return;
+    }
+
+    try {
+      let streamed = false;
+      const onChunk = (text: string) => {
+        streamed = true;
+        this.socket.emit('thinking-chunk', { color: 'w', text });
+      };
+      const result = await provider.getMove({ prompt: judgePrompt, onChunk });
+      if (!streamed && result.rawResponse) {
+        this.socket.emit('thinking-chunk', { color: 'w', text: result.rawResponse });
+      }
+      engine.applyVerdict(result.rawResponse || 'VERDICT: DRAW');
+    } catch (err: any) {
+      console.log(`[Arena] Debate judge error: ${err.message}`);
+      engine.applyVerdict('VERDICT: DRAW');
+    }
+
+    this.thinking = false;
+    this.thinkingPlayer = null;
+  }
 
   private endGame(
     winner: 'white' | 'black' | 'draw',

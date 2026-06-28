@@ -24,6 +24,8 @@ const STATUS_LABELS: Record<GameStatus, { text: string; cls: string }> = {
   peace: { text: 'Peace', cls: 'badge-completed' },
   x_wins: { text: 'X Wins', cls: 'badge-completed' },
   o_wins: { text: 'O Wins', cls: 'badge-completed' },
+  red_wins: { text: 'Red Wins', cls: 'badge-completed' },
+  yellow_wins: { text: 'Yellow Wins', cls: 'badge-completed' },
 };
 
 export function ControlPanel({

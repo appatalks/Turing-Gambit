@@ -5,6 +5,11 @@ import { ChessBoardView } from './components/ChessBoard';
 import { CheckersBoardView } from './components/CheckersBoard';
 import { WarGamesBoardView } from './components/WarGamesBoard';
 import { TicTacToeBoard } from './components/TicTacToeBoard';
+import { ConnectFourBoard } from './components/ConnectFourBoard';
+import { DotsAndBoxesBoard } from './components/DotsAndBoxesBoard';
+import { BattleshipBoard } from './components/BattleshipBoard';
+import { PrisonersDilemmaBoard } from './components/PrisonersDilemmaBoard';
+import { DebateBoard } from './components/DebateBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -204,6 +209,39 @@ export default function App() {
               interactive={isHumanTurn}
               onHumanMove={submitHumanMove}
               legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'connectfour' ? (
+            <ConnectFourBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'dotsandboxes' ? (
+            <DotsAndBoxesBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'battleship' ? (
+            <BattleshipBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'prisonersdilemma' ? (
+            <PrisonersDilemmaBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'debate' ? (
+            <DebateBoard
+              boardState={fen}
+              moveHistory={moveHistory}
             />
           ) : (
             <ChessBoardView

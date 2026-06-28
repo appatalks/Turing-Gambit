@@ -76,7 +76,29 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
           onClick={() => setConfig((c) => ({ ...c, game: 'wargames' }))}>☢ WarGames</button>
         <button className={`game-btn ${config.game === 'tictactoe' ? 'game-btn-active' : ''}`}
           onClick={() => setConfig((c) => ({ ...c, game: 'tictactoe' }))}>✕ Tic-Tac-Toe</button>
+        <button className={`game-btn ${config.game === 'connectfour' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'connectfour' }))}>🔴 Connect Four</button>
+        <button className={`game-btn ${config.game === 'dotsandboxes' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'dotsandboxes' }))}>▦ Dots &amp; Boxes</button>
+        <button className={`game-btn ${config.game === 'battleship' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'battleship' }))}>🚢 Battleship</button>
+        <button className={`game-btn ${config.game === 'prisonersdilemma' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'prisonersdilemma' }))}>🤝 Prisoner's Dilemma</button>
+        <button className={`game-btn ${config.game === 'debate' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'debate' }))}>⚖️ Debate</button>
       </div>
+
+      {config.game === 'debate' && (
+        <div className="debate-topic-input">
+          <label>Debate topic (optional)</label>
+          <input
+            type="text"
+            placeholder="Leave blank for a random resolution…"
+            value={config.debateTopic || ''}
+            onChange={(e) => setConfig((c) => ({ ...c, debateTopic: e.target.value }))}
+          />
+        </div>
+      )}
 
       <div className="config-panels">
         <PlayerConfigCard

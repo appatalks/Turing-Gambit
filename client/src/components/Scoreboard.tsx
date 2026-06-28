@@ -14,6 +14,11 @@ const GAME_LABELS: Record<string, string> = {
   checkers: '⬤ Checkers',
   wargames: '☢ WarGames',
   tictactoe: '✕ Tic-Tac-Toe',
+  connectfour: '🔴 Connect Four',
+  dotsandboxes: '▦ Dots & Boxes',
+  battleship: '🚢 Battleship',
+  prisonersdilemma: '🤝 Prisoner\'s Dilemma',
+  debate: '⚖️ Debate',
 };
 
 export function Scoreboard({ open, onClose, currentGame }: Props) {
