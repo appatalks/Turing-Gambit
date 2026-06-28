@@ -119,6 +119,18 @@ export class BattleshipEngine {
     return lines.join('\n') + `\n\nEnemy ships remaining: ${remaining}/${FLEET.length}\nX=hit, o=miss, .=unfired`;
   }
 
+  /** Cells the current player has already fired at (for prompt injection). */
+  firedCells(): { hits: string[]; misses: string[] } {
+    const enemy = this.currentTurn === 'w' ? this.gridB : this.gridA;
+    const hits: string[] = [];
+    const misses: string[] = [];
+    for (const idx of enemy.shots) {
+      if (enemy.hits.has(idx)) hits.push(this.idxToCoord(idx));
+      else misses.push(this.idxToCoord(idx));
+    }
+    return { hits, misses };
+  }
+
   legalMoves(): string[] {
     const enemy = this.currentTurn === 'w' ? this.gridB : this.gridA;
     const moves: string[] = [];

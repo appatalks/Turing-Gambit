@@ -116,6 +116,8 @@ export interface MatchState {
 
 export interface MoveRequest {
   prompt: string;
+  system?: string;
+  temperature?: number;
   onChunk?: (accumulatedText: string) => void;
 }
 

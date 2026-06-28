@@ -17,7 +17,8 @@ export class AnthropicProvider extends BaseProvider {
       (maxTokens) => ({
         model: this.config.model,
         max_tokens: maxTokens,
-        temperature: this.config.temperature ?? 0.3,
+        temperature: request.temperature ?? this.config.temperature ?? 0.3,
+        ...(request.system ? { system: request.system } : {}),
         messages: [{ role: 'user', content: request.prompt }],
       }),
       (json) => ({

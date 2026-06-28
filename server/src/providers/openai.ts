@@ -12,13 +12,17 @@ export class OpenAIProvider extends BaseProvider {
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
+    const messages: { role: string; content: string }[] = [];
+    if (request.system) messages.push({ role: 'system', content: request.system });
+    messages.push({ role: 'user', content: request.prompt });
+
     return this.chatCompletionAdaptive(
       endpoint,
       headers,
       (maxTokens) => ({
         model: this.config.model,
-        messages: [{ role: 'user', content: request.prompt }],
-        temperature: this.config.temperature ?? 0.3,
+        messages,
+        temperature: request.temperature ?? this.config.temperature ?? 0.3,
         max_tokens: maxTokens,
       }),
       (json) => ({

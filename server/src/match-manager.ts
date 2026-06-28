@@ -229,55 +229,60 @@ class Match {
     return this.chessEngine!.isGameOver();
   }
 
-  private buildPrompt(turn: 'w' | 'b', legalMoves: string[]): string {
+  private buildPrompt(turn: 'w' | 'b', legalMoves: string[]): { system?: string; prompt: string } {
     if (this.isCheckers) {
-      return buildCheckersPrompt({
+      return { prompt: buildCheckersPrompt({
         color: turn === 'w' ? 'White' : 'Black',
         board: this.checkersEngine!.boardForPrompt(),
         legalMoves,
         moveHistory: this.moveHistory,
-      });
+      }) };
     }
     if (this.isWargames) {
-      return buildWargamesPrompt({
+      return { prompt: buildWargamesPrompt({
         color: turn === 'w' ? 'Side A' : 'Side B',
         board: this.wargamesEngine!.boardForPrompt(),
         legalMoves,
         moveHistory: this.moveHistory,
-      });
+      }) };
     }
     if (this.isTTT) {
-      return buildTTTPrompt(
+      return { prompt: buildTTTPrompt(
         turn === 'w' ? 'X' : 'O',
         this.tttEngine!.boardForPrompt(),
         legalMoves,
-      );
+      ) };
     }
     if (this.isC4) {
-      return buildConnectFourPrompt(turn === 'w' ? 'Red' : 'Yellow', this.c4Engine!.boardForPrompt(), legalMoves);
+      return { prompt: buildConnectFourPrompt(turn === 'w' ? 'Red' : 'Yellow', this.c4Engine!.boardForPrompt(), legalMoves) };
     }
     if (this.isDAB) {
-      return buildDotsAndBoxesPrompt(turn === 'w' ? 'W' : 'B', this.dabEngine!.boardForPrompt(), legalMoves);
+      return { prompt: buildDotsAndBoxesPrompt(turn === 'w' ? 'W' : 'B', this.dabEngine!.boardForPrompt(), legalMoves) };
     }
     if (this.isBS) {
-      return buildBattleshipPrompt(turn === 'w' ? 'A' : 'B', this.bsEngine!.boardForPrompt(), legalMoves);
+      return buildBattleshipPrompt(
+        turn === 'w' ? 'A' : 'B',
+        this.bsEngine!.boardForPrompt(),
+        legalMoves,
+        this.bsEngine!.firedCells(),
+      );
     }
     if (this.isPD) {
-      return buildPDPrompt(this.pdEngine!.boardForPrompt());
+      return { prompt: buildPDPrompt(this.pdEngine!.boardForPrompt()) };
     }
     if (this.isDebate) {
-      return buildDebatePrompt(this.debateEngine!.boardForPrompt());
+      return { prompt: buildDebatePrompt(this.debateEngine!.boardForPrompt()) };
     }
     if (this.isRisk) {
-      return buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves);
+      return { prompt: buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves) };
     }
-    return buildChessPrompt({
+    return { prompt: buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
       legalMoves,
       moveHistory: this.moveHistory,
       gameStatus: this.chessEngine!.gameStatus(),
-    });
+    }) };
   }
 
   private buildRetry(invalidMove: string, legalMoves: string[]): string {
@@ -590,13 +595,14 @@ class Match {
       } else {
         // ── AI turn ──
         const provider = (turn === 'w' ? this.whiteProvider : this.blackProvider)!;
-        const prompt = this.buildPrompt(turn, legalMoves);
+        const { system: promptSystem, prompt } = this.buildPrompt(turn, legalMoves);
 
         this.thinking = true;
         this.thinkingPlayer = turn;
         this.emitState();
 
         currentPrompt = prompt;
+        let currentSystem = promptSystem;
         const overallStart = Date.now();
 
         for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
@@ -607,7 +613,19 @@ class Match {
               this.socket.emit('thinking-chunk', { color: turn, text });
             };
 
-            const result = await provider.getMove({ prompt: currentPrompt, onChunk });
+            // On retries, escalate temperature to break repetition loops and
+            // drop the system message so the model focuses on the correction.
+            const retryTemp = attempt > 0
+              ? Math.min(0.5 + attempt * 0.2, 1.2)
+              : undefined;
+            const reqSystem = attempt > 0 ? undefined : currentSystem;
+
+            const result = await provider.getMove({
+              prompt: currentPrompt,
+              system: reqSystem,
+              temperature: retryTemp,
+              onChunk,
+            });
             rawResponse = result.rawResponse;
 
             if (!streamed && rawResponse) {
@@ -636,6 +654,13 @@ class Match {
             currentPrompt = this.buildRetry(`Error: ${err.message}`, legalMoves);
           }
         }
+      }
+
+      // Battleship fallback: auto-pick a legal cell rather than forfeiting.
+      // This lets the game continue even when a local model is stuck in a loop.
+      if (!moveStr && this.running && this.isBS && legalMoves.length > 0) {
+        moveStr = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        console.log(`[Arena] Battleship auto-pick fallback: ${moveStr}`);
       }
 
       if (!moveStr || !this.running) {

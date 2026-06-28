@@ -28,7 +28,10 @@ export class CopilotProvider extends BaseProvider {
     if (this.config.model && this.config.model !== 'default' && this.config.model !== 'auto') {
       await this.session!.selectModel(sessionId, this.config.model);
     }
-    const response = await this.session!.prompt(sessionId, request.prompt, request.onChunk);
+    const fullPrompt = request.system
+      ? `${request.system}\n\n${request.prompt}`
+      : request.prompt;
+    const response = await this.session!.prompt(sessionId, fullPrompt, request.onChunk);
 
     // ACP doesn't report token usage — estimate from text length (~4 chars/token)
     const estimatedTokens = Math.ceil((request.prompt.length + response.length) / 4);

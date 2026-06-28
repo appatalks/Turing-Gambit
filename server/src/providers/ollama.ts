@@ -9,15 +9,19 @@ export class OllamaProvider extends BaseProvider {
       (this.config.endpoint || process.env.OLLAMA_ENDPOINT || 'http://localhost:11434') +
       '/api/chat';
 
+    const messages: { role: string; content: string }[] = [];
+    if (request.system) messages.push({ role: 'system', content: request.system });
+    messages.push({ role: 'user', content: request.prompt });
+
     return this.chatCompletionAdaptive(
       endpoint,
       {},
       (maxTokens) => ({
         model: this.config.model,
-        messages: [{ role: 'user', content: request.prompt }],
+        messages,
         stream: false,
         options: {
-          temperature: this.config.temperature ?? 0.3,
+          temperature: request.temperature ?? this.config.temperature ?? 0.3,
           num_predict: maxTokens,
         },
       }),

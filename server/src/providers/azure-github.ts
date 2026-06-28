@@ -16,13 +16,17 @@ export class AzureGitHubProvider extends BaseProvider {
       process.env.GITHUB_MODELS_ENDPOINT ||
       'https://models.github.ai/inference/chat/completions';
 
+    const messages: { role: string; content: string }[] = [];
+    if (request.system) messages.push({ role: 'system', content: request.system });
+    messages.push({ role: 'user', content: request.prompt });
+
     return this.chatCompletion(
       endpoint,
       { Authorization: `Bearer ${token}` },
       {
         model: this.config.model,
-        messages: [{ role: 'user', content: request.prompt }],
-        temperature: this.config.temperature ?? 0.3,
+        messages,
+        temperature: request.temperature ?? this.config.temperature ?? 0.3,
         max_tokens: this.config.maxTokens ?? 256,
       },
       (json) => ({

@@ -23,35 +23,62 @@ function hotTargets(board: string, legal: Set<string>): string[] {
   return [...out];
 }
 
-export function buildBattleshipPrompt(color: 'A' | 'B', board: string, legalMoves: string[]): string {
+export interface BattleshipPrompt {
+  system: string;
+  prompt: string;
+}
+
+export function buildBattleshipPrompt(
+  color: 'A' | 'B',
+  board: string,
+  legalMoves: string[],
+  fired?: { hits: string[]; misses: string[] },
+): BattleshipPrompt {
   const legalSet = new Set(legalMoves);
   const hot = hotTargets(board, legalSet);
   const hint = hot.length > 0
-    ? `\n⚠ You have unfinished hits — fire NEXT to a cell adjacent to an "X" to sink the ship: ${hot.join(', ')}`
+    ? `\nSmart targets (adjacent to hits): ${hot.join(', ')}`
     : '';
 
-  return `You are playing Battleship as Fleet ${color}. Find and sink all enemy ships.
-On the grid: X = your past hit, o = your past miss, . = water you have NOT fired at.
-You may ONLY fire at a "." cell. Never repeat an X or o cell.
+  // Explicit shot history so the model knows exactly what's been used.
+  let historyBlock = '';
+  if (fired && (fired.hits.length > 0 || fired.misses.length > 0)) {
+    const parts: string[] = [];
+    if (fired.hits.length) parts.push(`Hits: ${fired.hits.join(', ')}`);
+    if (fired.misses.length) parts.push(`Misses: ${fired.misses.join(', ')}`);
+    historyBlock = `\nYour past shots (DO NOT fire at these again): ${parts.join(' | ')}`;
+  }
 
-Your firing grid (enemy waters):
+  const system = `You are a Battleship player (Fleet ${color}). You fire at ONE unfired cell per turn.
+CRITICAL RULES:
+- ONLY choose from the "Available cells" list provided.
+- NEVER repeat a coordinate from "Your past shots".
+- Reply with EXACTLY: MOVE: <coordinate>`;
+
+  const prompt = `Your grid:
 ${board}
-${hint}
+${historyBlock}${hint}
 
-Pick ONE coordinate you have not fired at yet (a "." cell). Available cells:
-${legalMoves.join(', ')}
+Available cells: ${legalMoves.join(', ')}
 
-Reply with exactly: MOVE: <coordinate>`;
+Fire at ONE of the above available cells. Reply: MOVE: <coordinate>`;
+
+  return { system, prompt };
 }
 
 export function buildBattleshipRetryPrompt(invalidMove: string, legalMoves: string[]): string {
-  const sample = legalMoves.slice(0, 60).join(', ');
+  // Shuffle a copy so the prompt text differs on every retry (defeats KV-cache
+  // hits on local inference servers that replay the same cached logits).
+  const shuffled = [...legalMoves].sort(() => Math.random() - 0.5);
+  const sample = shuffled.slice(0, 60).join(', ');
+  const pick = shuffled[0]; // suggest the first one from the shuffled list
   return `"${invalidMove}" is NOT allowed — you already fired there (or it is off the board). Do not reason, just answer.
 
-Choose ONE coordinate from this unfired list and copy it exactly:
+Choose ONE coordinate from this unfired list (for example: ${pick}):
 ${sample}${legalMoves.length > 60 ? ', ...' : ''}
 
-Reply with only: MOVE: <coordinate>`;
+Reply with ONLY: MOVE: ${pick}
+(or any other coordinate from the list above)`;
 }
 
 export function parseBattleshipMove(response: string): string | null {
