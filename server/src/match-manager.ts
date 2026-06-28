@@ -40,7 +40,7 @@ import { buildConnectFourPrompt, buildConnectFourRetryPrompt, parseConnectFourMo
 import { DotsAndBoxesEngine } from './games/dotsandboxes/engine.js';
 import { buildDotsAndBoxesPrompt, buildDotsAndBoxesRetryPrompt, parseDotsAndBoxesMove } from './games/dotsandboxes/prompt.js';
 import { BattleshipEngine } from './games/battleship/engine.js';
-import { buildBattleshipPrompt, buildBattleshipRetryPrompt, parseBattleshipMove } from './games/battleship/prompt.js';
+import { buildBattleshipPrompt, buildBattleshipRetryPrompt, parseBattleshipMove, extractBattleshipMove } from './games/battleship/prompt.js';
 import { PrisonersDilemmaEngine } from './games/prisonersdilemma/engine.js';
 import { buildPDPrompt, buildPDRetryPrompt, parsePDMove } from './games/prisonersdilemma/prompt.js';
 import { DebateEngine } from './games/debate/engine.js';
@@ -315,7 +315,7 @@ class Match {
       return p && legalMoves.includes(p) ? p : null;
     }
     if (this.isBS) {
-      const p = parseBattleshipMove(raw);
+      const p = extractBattleshipMove(raw, legalMoves);
       return p && legalMoves.includes(p) ? p : null;
     }
     if (this.isPD) {
