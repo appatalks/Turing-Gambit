@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { GameType } from '../types';
-import { computeStandings, loadResults, clearResults } from '../lib/scoreboard';
+import { computeRankings, loadResults, clearResults } from '../lib/scoreboard';
 
 interface Props {
   open: boolean;
@@ -19,6 +19,7 @@ const GAME_LABELS: Record<string, string> = {
   battleship: '🚢 Battleship',
   prisonersdilemma: '🤝 Prisoner\'s Dilemma',
   debate: '⚖️ Debate',
+  risk: '🌍 Risk',
 };
 
 export function Scoreboard({ open, onClose, currentGame }: Props) {
@@ -26,7 +27,7 @@ export function Scoreboard({ open, onClose, currentGame }: Props) {
 
   if (!open) return null;
 
-  const standings = computeStandings(filter === 'all' ? undefined : filter);
+  const standings = computeRankings(filter === 'all' ? undefined : filter);
   const recent = loadResults()
     .filter((r) => filter === 'all' || r.game === filter)
     .slice(0, 8);
@@ -35,7 +36,7 @@ export function Scoreboard({ open, onClose, currentGame }: Props) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal glass glass-glow animate-in scoreboard-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>🏆 Scoreboard</h2>
+          <h2>📊 Model Rankings</h2>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>✕</button>
         </div>
 
@@ -56,7 +57,7 @@ export function Scoreboard({ open, onClose, currentGame }: Props) {
         <div className="modal-body">
           {standings.length === 0 ? (
             <p className="text-muted" style={{ textAlign: 'center', padding: 20 }}>
-              No matches recorded yet. Play some games!
+              No model-vs-model games recorded yet. Pit two models against each other!
             </p>
           ) : (
             <table className="standings-table">
@@ -64,6 +65,7 @@ export function Scoreboard({ open, onClose, currentGame }: Props) {
                 <tr>
                   <th>#</th>
                   <th>Model</th>
+                  <th>Elo</th>
                   <th>W</th>
                   <th>L</th>
                   <th>D</th>
@@ -80,6 +82,7 @@ export function Scoreboard({ open, onClose, currentGame }: Props) {
                         <span className="standings-model mono">{s.model}</span>
                         <span className="standings-provider">{s.provider}</span>
                       </td>
+                      <td className="stat-elo mono">{s.rating}</td>
                       <td className="stat-w">{s.wins}</td>
                       <td className="stat-l">{s.losses}</td>
                       <td className="stat-d">{s.draws}</td>

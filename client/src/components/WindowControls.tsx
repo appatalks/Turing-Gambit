@@ -49,7 +49,7 @@ export function WindowControls({ onSettings, onScoreboard, onMusicFiles }: Props
         </>
       )}
       {onScoreboard && (
-        <button className="win-btn win-scoreboard" onClick={onScoreboard} title="Scoreboard">🏆</button>
+        <button className="win-btn win-scoreboard" onClick={onScoreboard} title="Model Rankings">📊</button>
       )}
       {onSettings && (
         <button className="win-btn win-settings" onClick={onSettings} title="Settings">⚙</button>

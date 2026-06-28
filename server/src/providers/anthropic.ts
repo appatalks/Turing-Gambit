@@ -8,23 +8,24 @@ export class AnthropicProvider extends BaseProvider {
     const apiKey = this.getEnvKey(this.config.apiKeyEnvVar);
     const endpoint = this.config.endpoint || 'https://api.anthropic.com/v1/messages';
 
-    return this.chatCompletion(
+    return this.chatCompletionAdaptive(
       endpoint,
       {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      {
+      (maxTokens) => ({
         model: this.config.model,
-        max_tokens: this.config.maxTokens ?? 256,
+        max_tokens: maxTokens,
         temperature: this.config.temperature ?? 0.3,
         messages: [{ role: 'user', content: request.prompt }],
-      },
+      }),
       (json) => ({
         text: json.content?.[0]?.text ?? '',
         tokens:
           (json.usage?.input_tokens ?? 0) + (json.usage?.output_tokens ?? 0),
       }),
+      this.config.maxTokens ?? 8192,
     );
   }
 }

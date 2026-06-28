@@ -21,7 +21,7 @@ export interface ProviderConfig {
 // ─── Match Types ────────────────────────────────────────
 
 export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe'
-  | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate';
+  | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate' | 'risk';
 
 export interface MatchConfig {
   game: GameType;
@@ -31,6 +31,7 @@ export interface MatchConfig {
   maxRetries: number;
   moveDelayMs: number;
   maxMoves: number;
+  maxTokens?: number;
 }
 
 export type GameStatus =

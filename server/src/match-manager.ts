@@ -45,6 +45,8 @@ import { PrisonersDilemmaEngine } from './games/prisonersdilemma/engine.js';
 import { buildPDPrompt, buildPDRetryPrompt, parsePDMove } from './games/prisonersdilemma/prompt.js';
 import { DebateEngine } from './games/debate/engine.js';
 import { buildDebatePrompt, parseDebateMove } from './games/debate/prompt.js';
+import { RiskEngine } from './games/risk/engine.js';
+import { buildRiskPrompt, buildRiskRetryPrompt, parseRiskMove, fuzzyRiskMatch } from './games/risk/prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -106,6 +108,7 @@ class Match {
   private bsEngine: BattleshipEngine | null = null;
   private pdEngine: PrisonersDilemmaEngine | null = null;
   private debateEngine: DebateEngine | null = null;
+  private riskEngine: RiskEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -133,6 +136,7 @@ class Match {
   private get isBS(): boolean { return this.config.game === 'battleship'; }
   private get isPD(): boolean { return this.config.game === 'prisonersdilemma'; }
   private get isDebate(): boolean { return this.config.game === 'debate'; }
+  private get isRisk(): boolean { return this.config.game === 'risk'; }
 
   constructor(config: MatchConfig, socket: Socket) {
     this.id = uuid();
@@ -146,14 +150,18 @@ class Match {
       case 'battleship': this.bsEngine = new BattleshipEngine(); break;
       case 'prisonersdilemma': this.pdEngine = new PrisonersDilemmaEngine(); break;
       case 'debate': this.debateEngine = new DebateEngine(config.debateTopic); break;
+      case 'risk': this.riskEngine = new RiskEngine(); break;
       default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
+    // Apply the match-level token budget to any provider that doesn't set its own.
+    const withTokens = (p: typeof config.white) =>
+      p.maxTokens == null && config.maxTokens != null ? { ...p, maxTokens: config.maxTokens } : p;
     if (config.white.type !== 'human') {
-      this.whiteProvider = createProvider(config.white);
+      this.whiteProvider = createProvider(withTokens(config.white));
     }
     if (config.black.type !== 'human') {
-      this.blackProvider = createProvider(config.black);
+      this.blackProvider = createProvider(withTokens(config.black));
     }
   }
 
@@ -168,6 +176,7 @@ class Match {
     if (this.isBS) return this.bsEngine!.turn();
     if (this.isPD) return this.pdEngine!.turn();
     if (this.isDebate) return this.debateEngine!.turn();
+    if (this.isRisk) return this.riskEngine!.turn();
     return this.chessEngine!.turn();
   }
 
@@ -180,6 +189,7 @@ class Match {
     if (this.isBS) return this.bsEngine!.boardState();
     if (this.isPD) return this.pdEngine!.boardState();
     if (this.isDebate) return this.debateEngine!.boardState();
+    if (this.isRisk) return this.riskEngine!.boardState();
     return this.chessEngine!.fen();
   }
 
@@ -189,6 +199,7 @@ class Match {
     if (this.isTTT) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isDebate) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isC4 || this.isDAB || this.isBS || this.isPD) return this.moveHistory.map((m) => m.san).join(', ');
+    if (this.isRisk) return this.moveHistory.map((m) => m.san).join('\n');
     return this.chessEngine!.pgn();
   }
 
@@ -201,6 +212,7 @@ class Match {
     if (this.isBS) return this.bsEngine!.legalMoves();
     if (this.isPD) return this.pdEngine!.legalMoves();
     if (this.isDebate) return this.debateEngine!.legalMoves();
+    if (this.isRisk) return this.riskEngine!.legalMoves();
     return this.chessEngine!.legalMovesUci();
   }
 
@@ -213,6 +225,7 @@ class Match {
     if (this.isBS) return this.bsEngine!.isGameOver();
     if (this.isPD) return this.pdEngine!.isGameOver();
     if (this.isDebate) return this.debateEngine!.isGameOver();
+    if (this.isRisk) return this.riskEngine!.isGameOver();
     return this.chessEngine!.isGameOver();
   }
 
@@ -255,6 +268,9 @@ class Match {
     if (this.isDebate) {
       return buildDebatePrompt(this.debateEngine!.boardForPrompt());
     }
+    if (this.isRisk) {
+      return buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves);
+    }
     return buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
@@ -273,6 +289,7 @@ class Match {
     if (this.isBS) return buildBattleshipRetryPrompt(invalidMove, legalMoves);
     if (this.isPD) return buildPDRetryPrompt();
     if (this.isDebate) return buildDebatePrompt(this.debateEngine!.boardForPrompt());
+    if (this.isRisk) return buildRiskRetryPrompt(invalidMove, legalMoves);
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
@@ -308,6 +325,12 @@ class Match {
     if (this.isDebate) {
       // Free text — any non-empty response is valid.
       return parseDebateMove(raw);
+    }
+    if (this.isRisk) {
+      const p = parseRiskMove(raw);
+      if (p && legalMoves.includes(p)) return p;
+      // Lenient fallback for models that don't follow the exact grammar.
+      return fuzzyRiskMatch(raw, legalMoves);
     }
     // Chess: UCI primary + SAN fallback
     const parsed = parseMoveFromResponse(raw);
@@ -363,6 +386,14 @@ class Match {
       if (!r) return null;
       return { san: r.san, captured: r.captured, from: 'arg', to: 'arg' };
     }
+    if (this.isRisk) {
+      const r = this.riskEngine!.makeMove(move);
+      if (!r) return null;
+      const parts = move.split(/\s+/);
+      const from = parts[1] || move;
+      const to = parts[2] || from;
+      return { san: r.san, captured: r.captured, from, to };
+    }
     const r = this.chessEngine!.makeMove(move);
     if (!r) return null;
     return { san: r.san, captured: r.captured, from: r.from, to: r.to };
@@ -413,6 +444,10 @@ class Match {
       if (s === 'white_wins') this.endGame('white', 'white_wins', `PRO wins. ${reason}`);
       else if (s === 'black_wins') this.endGame('black', 'black_wins', `CON wins. ${reason}`);
       else this.endGame('draw', 'draw', `Draw. ${reason}`);
+    } else if (this.isRisk) {
+      const s = this.riskEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Blue conquered the world');
+      else this.endGame('black', 'black_wins', 'Red conquered the world');
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
         this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',
@@ -511,7 +546,9 @@ class Match {
         return;
       }
 
-      if (this.moveHistory.length >= this.config.maxMoves * 2) {
+      // Risk has many micro-actions per turn, so allow a larger budget.
+      const moveBudget = this.config.maxMoves * (this.isRisk ? 12 : 2);
+      if (this.moveHistory.length >= moveBudget) {
         this.endGame('draw', 'max_moves_reached', 'Maximum moves reached');
         return;
       }

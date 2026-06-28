@@ -10,6 +10,7 @@ import { DotsAndBoxesBoard } from './components/DotsAndBoxesBoard';
 import { BattleshipBoard } from './components/BattleshipBoard';
 import { PrisonersDilemmaBoard } from './components/PrisonersDilemmaBoard';
 import { DebateBoard } from './components/DebateBoard';
+import { RiskBoard } from './components/RiskBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -148,7 +149,7 @@ export default function App() {
         <MatchTimer state={matchState} />
         <div className="arena-header-right">
           <MusicPlayer ref={musicRef} />
-          <button className="btn btn-secondary btn-icon" onClick={() => setScoreboardOpen(true)} title="Scoreboard" style={{ opacity: 0.7 }}>🏆</button>
+          <button className="btn btn-secondary btn-icon" onClick={() => setScoreboardOpen(true)} title="Model Rankings" style={{ opacity: 0.7 }}>📊</button>
         </div>
       </header>
 
@@ -241,6 +242,13 @@ export default function App() {
             <DebateBoard
               boardState={fen}
               moveHistory={moveHistory}
+            />
+          ) : matchState.game === 'risk' ? (
+            <RiskBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
             />
           ) : (
             <ChessBoardView

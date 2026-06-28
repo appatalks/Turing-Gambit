@@ -15,6 +15,7 @@ const DEFAULT_CONFIG: MatchConfig = {
   maxRetries: 5,
   moveDelayMs: 800,
   maxMoves: 200,
+  maxTokens: 8192,
 };
 
 const STORAGE_KEY = 'tg-match-config';
@@ -86,6 +87,8 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
           onClick={() => setConfig((c) => ({ ...c, game: 'prisonersdilemma' }))}>🤝 Prisoner's Dilemma</button>
         <button className={`game-btn ${config.game === 'debate' ? 'game-btn-active' : ''}`}
           onClick={() => setConfig((c) => ({ ...c, game: 'debate' }))}>⚖️ Debate</button>
+        <button className={`game-btn ${config.game === 'risk' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'risk' }))}>🌍 Risk</button>
       </div>
 
       {config.game === 'debate' && (
@@ -155,6 +158,20 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
                 setConfig((c) => ({ ...c, maxMoves: +e.target.value }))
               }
             />
+          </div>
+          <div>
+            <label>Max Tokens per Move</label>
+            <input
+              type="number"
+              min={256}
+              max={131072}
+              step={256}
+              value={config.maxTokens ?? 8192}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, maxTokens: +e.target.value }))
+              }
+            />
+            <span className="field-hint">Output budget. Auto-shrinks if a model rejects it.</span>
           </div>
         </div>
       </div>

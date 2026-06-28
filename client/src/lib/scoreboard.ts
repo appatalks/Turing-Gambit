@@ -19,6 +19,7 @@ export interface ModelRecord {
   losses: number;
   draws: number;
   games: number;
+  rating: number;
 }
 
 const STORAGE_KEY = 'tg-scoreboard';
@@ -59,30 +60,57 @@ export function clearResults(): void {
 
 /** Aggregate per-model win/loss records, optionally filtered by game */
 export function computeStandings(game?: GameType): ModelRecord[] {
-  const results = loadResults();
-  const records = new Map<string, ModelRecord>();
+  return computeRankings(game);
+}
 
+/**
+ * Rank models against each other using an Elo rating computed over the full
+ * chronological history of model-vs-model games. This is the primary
+ * benchmarking signal — stronger models float to the top regardless of how
+ * many games each has played. Games involving a human ("You") are excluded.
+ */
+export function computeRankings(game?: GameType): ModelRecord[] {
+  const BASE = 1000;
+  const K = 32;
+
+  const all = loadResults().filter(
+    (r) =>
+      (!game || r.game === game) &&
+      r.whiteModel !== 'You' &&
+      r.blackModel !== 'You',
+  );
+  // Replay oldest → newest so Elo updates in the order games were played.
+  const chrono = [...all].reverse();
+
+  const records = new Map<string, ModelRecord>();
   const ensure = (model: string, provider: string): ModelRecord => {
     const key = `${provider}:${model}`;
     if (!records.has(key)) {
-      records.set(key, { model, provider, wins: 0, losses: 0, draws: 0, games: 0 });
+      records.set(key, { model, provider, wins: 0, losses: 0, draws: 0, games: 0, rating: BASE });
     }
     return records.get(key)!;
   };
 
-  for (const r of results) {
-    if (game && r.game !== game) continue;
-    if (r.whiteModel === 'You' && r.blackModel === 'You') continue;
-
+  for (const r of chrono) {
     const w = ensure(r.whiteModel, r.whiteProvider);
     const b = ensure(r.blackModel, r.blackProvider);
     w.games++; b.games++;
 
-    if (r.winner === 'draw') { w.draws++; b.draws++; }
-    else if (r.winner === 'white') { w.wins++; b.losses++; }
-    else { b.wins++; w.losses++; }
+    let scoreW: number;
+    if (r.winner === 'draw') { w.draws++; b.draws++; scoreW = 0.5; }
+    else if (r.winner === 'white') { w.wins++; b.losses++; scoreW = 1; }
+    else { b.wins++; w.losses++; scoreW = 0; }
+
+    // Skip rating updates for self-play (same model both sides) — no signal.
+    if (w !== b) {
+      const expW = 1 / (1 + Math.pow(10, (b.rating - w.rating) / 400));
+      const expB = 1 - expW;
+      w.rating += K * (scoreW - expW);
+      b.rating += K * ((1 - scoreW) - expB);
+    }
   }
 
   return Array.from(records.values())
-    .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
+    .map((r) => ({ ...r, rating: Math.round(r.rating) }))
+    .sort((a, b) => b.rating - a.rating || (b.wins - b.losses) - (a.wins - a.losses));
 }
