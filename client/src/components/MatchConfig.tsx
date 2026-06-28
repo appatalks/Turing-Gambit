@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { MatchConfig, ProviderConfig, ProviderType, GameType } from '../types';
+import type { MatchConfig, ProviderConfig, ProviderType } from '../types';
 import { PROVIDER_OPTIONS } from '../types';
+import { GAME_CATEGORIES, gamesInCategory, GAMES_BY_ID } from '../lib/games';
 
 interface Props {
   onStart: (config: MatchConfig) => void;
@@ -57,135 +58,138 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
 
   return (
     <div className="config-screen">
-      <div className="config-header">
-        <h1 className="config-title">
-          <span className="title-icon">♔</span> Turing-Gambit{' '}
-          <span className="title-icon">♚</span>
-        </h1>
-        <p className="config-subtitle text-secondary">
-          AI Match &nbsp;|&nbsp; Configure two AI models and watch them battle on the board
-        </p>
-      </div>
+      {/* Left sidebar — game picker */}
+      <aside className="config-sidebar">
+        <div className="sidebar-header">Games</div>
+        <nav className="sidebar-nav">
+          {GAME_CATEGORIES.map((cat) => (
+            <div key={cat.id} className="sidebar-group">
+              <div className="sidebar-group-label">{cat.label}</div>
+              {gamesInCategory(cat.id).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`sidebar-item ${config.game === g.id ? 'sidebar-item-active' : ''}`}
+                  onClick={() => setConfig((c) => ({ ...c, game: g.id }))}
+                  title={g.description}
+                >
+                  <span className="sidebar-item-icon">{g.icon}</span>
+                  <span className="sidebar-item-name">{g.name}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
 
-      {/* Game selector */}
-      <div className="game-selector">
-        <button className={`game-btn ${config.game === 'chess' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'chess' }))}>♟ Chess</button>
-        <button className={`game-btn ${config.game === 'checkers' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'checkers' }))}>⬤ Checkers</button>
-        <button className={`game-btn ${config.game === 'wargames' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'wargames' }))}>☢ WarGames</button>
-        <button className={`game-btn ${config.game === 'tictactoe' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'tictactoe' }))}>✕ Tic-Tac-Toe</button>
-        <button className={`game-btn ${config.game === 'connectfour' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'connectfour' }))}>🔴 Connect Four</button>
-        <button className={`game-btn ${config.game === 'dotsandboxes' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'dotsandboxes' }))}>▦ Dots &amp; Boxes</button>
-        <button className={`game-btn ${config.game === 'battleship' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'battleship' }))}>🚢 Battleship</button>
-        <button className={`game-btn ${config.game === 'prisonersdilemma' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'prisonersdilemma' }))}>🤝 Prisoner's Dilemma</button>
-        <button className={`game-btn ${config.game === 'debate' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'debate' }))}>⚖️ Debate</button>
-        <button className={`game-btn ${config.game === 'risk' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'risk' }))}>🌍 Risk</button>
-      </div>
+      {/* Right — main config content */}
+      <div className="config-main">
+        <div className="config-header">
+          <h1 className="config-title">
+            <span className="title-icon">♔</span> Turing-Gambit{' '}
+            <span className="title-icon">♚</span>
+          </h1>
+          <p className="config-subtitle text-secondary">
+            {GAMES_BY_ID[config.game]?.icon} {GAMES_BY_ID[config.game]?.name} — {GAMES_BY_ID[config.game]?.description}
+          </p>
+        </div>
 
-      {config.game === 'debate' && (
-        <div className="debate-topic-input">
-          <label>Debate topic (optional)</label>
-          <input
-            type="text"
-            placeholder="Leave blank for a random resolution…"
-            value={config.debateTopic || ''}
-            onChange={(e) => setConfig((c) => ({ ...c, debateTopic: e.target.value }))}
+        {config.game === 'debate' && (
+          <div className="debate-topic-input">
+            <label>Debate topic (optional)</label>
+            <input
+              type="text"
+              placeholder="Leave blank for a random resolution…"
+              value={config.debateTopic || ''}
+              onChange={(e) => setConfig((c) => ({ ...c, debateTopic: e.target.value }))}
+            />
+          </div>
+        )}
+
+        <div className="config-panels">
+          <PlayerConfigCard
+            color="white"
+            provider={config.white}
+            onTypeChange={(t) => setProviderType('white', t)}
+            onUpdate={(u) => updatePlayer('white', u)}
+          />
+          <div className="config-vs">VS</div>
+          <PlayerConfigCard
+            color="black"
+            provider={config.black}
+            onTypeChange={(t) => setProviderType('black', t)}
+            onUpdate={(u) => updatePlayer('black', u)}
           />
         </div>
-      )}
 
-      <div className="config-panels">
-        <PlayerConfigCard
-          color="white"
-          provider={config.white}
-          onTypeChange={(t) => setProviderType('white', t)}
-          onUpdate={(u) => updatePlayer('white', u)}
-        />
-        <div className="config-vs">VS</div>
-        <PlayerConfigCard
-          color="black"
-          provider={config.black}
-          onTypeChange={(t) => setProviderType('black', t)}
-          onUpdate={(u) => updatePlayer('black', u)}
-        />
-      </div>
-
-      <div className="config-settings glass">
-        <h3>Match Settings</h3>
-        <div className="settings-grid">
-          <div>
-            <label>Max Retries (invalid moves)</label>
-            <input
-              type="number"
-              min={0}
-              max={10}
-              value={config.maxRetries}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, maxRetries: +e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label>Move Delay (ms)</label>
-            <input
-              type="number"
-              min={0}
-              max={10000}
-              step={100}
-              value={config.moveDelayMs}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, moveDelayMs: +e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label>Max Moves per Side</label>
-            <input
-              type="number"
-              min={10}
-              max={500}
-              value={config.maxMoves}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, maxMoves: +e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label>Max Tokens per Move</label>
-            <input
-              type="number"
-              min={256}
-              max={131072}
-              step={256}
-              value={config.maxTokens ?? 8192}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, maxTokens: +e.target.value }))
-              }
-            />
-            <span className="field-hint">Output budget. Auto-shrinks if a model rejects it.</span>
+        <div className="config-settings glass">
+          <h3>Match Settings</h3>
+          <div className="settings-grid">
+            <div>
+              <label>Max Retries (invalid moves)</label>
+              <input
+                type="number"
+                min={0}
+                max={10}
+                value={config.maxRetries}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, maxRetries: +e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label>Move Delay (ms)</label>
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                step={100}
+                value={config.moveDelayMs}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, moveDelayMs: +e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label>Max Moves per Side</label>
+              <input
+                type="number"
+                min={10}
+                max={500}
+                value={config.maxMoves}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, maxMoves: +e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label>Max Tokens per Move</label>
+              <input
+                type="number"
+                min={256}
+                max={131072}
+                step={256}
+                value={config.maxTokens ?? 8192}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, maxTokens: +e.target.value }))
+                }
+              />
+              <span className="field-hint">Output budget. Auto-shrinks if a model rejects it.</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="config-start-row">
-        {onToggleAutoPlay && (
-          <label className="autoplay-toggle">
-            <input type="checkbox" checked={!!autoPlay} onChange={onToggleAutoPlay} />
-            <span>🔁 Auto-play (AI vs AI rematch)</span>
-          </label>
-        )}
-        <button className="btn btn-primary btn-start" onClick={() => onStart(config)}>
-          ▶ Start Match
-        </button>
+        <div className="config-start-row">
+          {onToggleAutoPlay && (
+            <label className="autoplay-toggle">
+              <input type="checkbox" checked={!!autoPlay} onChange={onToggleAutoPlay} />
+              <span>🔁 Auto-play (AI vs AI rematch)</span>
+            </label>
+          )}
+          <button className="btn btn-primary btn-start" onClick={() => onStart(config)}>
+            ▶ Start Match
+          </button>
+        </div>
       </div>
     </div>
   );

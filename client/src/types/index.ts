@@ -21,7 +21,8 @@ export interface ProviderConfig {
 // ─── Match Types ────────────────────────────────────────
 
 export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe'
-  | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate' | 'risk';
+  | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate' | 'risk'
+  | 'mario';
 
 export interface MatchConfig {
   game: GameType;

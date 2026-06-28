@@ -11,6 +11,7 @@ import { BattleshipBoard } from './components/BattleshipBoard';
 import { PrisonersDilemmaBoard } from './components/PrisonersDilemmaBoard';
 import { DebateBoard } from './components/DebateBoard';
 import { RiskBoard } from './components/RiskBoard';
+import { MarioBoard } from './components/MarioBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -32,12 +33,19 @@ export default function App() {
     matchState,
     thinkingText,
     error,
+    burst,
+    countdown,
+    executing,
+    arcadeRun,
     startMatch,
     setKeys,
     pauseMatch,
     resumeMatch,
     stepMatch,
     submitHumanMove,
+    submitStrategy,
+    clearBurst,
+    reportArcadeResult,
     resetMatch,
     exportMatch,
   } = useSocket();
@@ -249,6 +257,19 @@ export default function App() {
               interactive={isHumanTurn}
               onHumanMove={submitHumanMove}
               legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'mario' ? (
+            <MarioBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+              burst={burst}
+              onBurstComplete={clearBurst}
+              countdown={countdown}
+              executing={executing}
+              arcadeRun={arcadeRun}
+              onArcadeResult={reportArcadeResult}
             />
           ) : (
             <ChessBoardView

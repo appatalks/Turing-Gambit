@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { GameType } from '../types';
 import { computeRankings, loadResults, clearResults } from '../lib/scoreboard';
+import { GAMES, gameLabel } from '../lib/games';
 
 interface Props {
   open: boolean;
@@ -10,16 +11,7 @@ interface Props {
 
 const GAME_LABELS: Record<string, string> = {
   all: 'All Games',
-  chess: '♟ Chess',
-  checkers: '⬤ Checkers',
-  wargames: '☢ WarGames',
-  tictactoe: '✕ Tic-Tac-Toe',
-  connectfour: '🔴 Connect Four',
-  dotsandboxes: '▦ Dots & Boxes',
-  battleship: '🚢 Battleship',
-  prisonersdilemma: '🤝 Prisoner\'s Dilemma',
-  debate: '⚖️ Debate',
-  risk: '🌍 Risk',
+  ...Object.fromEntries(GAMES.map((g) => [g.id, gameLabel(g.id)])),
 };
 
 export function Scoreboard({ open, onClose, currentGame }: Props) {
