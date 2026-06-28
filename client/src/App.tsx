@@ -1,8 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSocket } from './hooks/useSocket';
 import { MatchConfigPanel } from './components/MatchConfig';
 import { ChessBoardView } from './components/ChessBoard';
 import { CheckersBoardView } from './components/CheckersBoard';
+import { WarGamesBoardView } from './components/WarGamesBoard';
+import { TicTacToeBoard } from './components/TicTacToeBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -13,6 +15,8 @@ import { MusicPlayer, type MusicPlayerHandle } from './components/MusicPlayer';
 import { VictorySplash } from './components/VictorySplash';
 import { ThinkingTerminal } from './components/ThinkingTerminal';
 import { WindowControls } from './components/WindowControls';
+import { Scoreboard } from './components/Scoreboard';
+import { recordResult } from './lib/scoreboard';
 import type { MatchConfig } from './types';
 import './App.css';
 
@@ -33,13 +37,46 @@ export default function App() {
   } = useSocket();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scoreboardOpen, setScoreboardOpen] = useState(false);
   const [logCollapsed, setLogCollapsed] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(() => localStorage.getItem('tg-autoplay') === '1');
   const musicRef = useRef<MusicPlayerHandle>(null);
+  const lastConfigRef = useRef<MatchConfig | null>(null);
+  const recordedRef = useRef<string | null>(null);
 
   const handleStart = useCallback((config: MatchConfig) => {
     setKeys(loadSavedKeys());
+    lastConfigRef.current = config;
     startMatch(config);
   }, [setKeys, startMatch]);
+
+  const toggleAutoPlay = useCallback(() => {
+    setAutoPlay((v) => {
+      const next = !v;
+      localStorage.setItem('tg-autoplay', next ? '1' : '0');
+      return next;
+    });
+  }, []);
+
+  // Record results + auto-rematch when a match completes
+  useEffect(() => {
+    if (matchState?.status === 'completed' && matchState.winner) {
+      if (recordedRef.current !== matchState.id) {
+        recordedRef.current = matchState.id;
+        recordResult(matchState);
+
+        // Auto-play: start a new match after a short delay (AI vs AI only)
+        const isAIvsAI = matchState.white.type !== 'human' && matchState.black.type !== 'human';
+        if (autoPlay && isAIvsAI && lastConfigRef.current) {
+          const cfg = lastConfigRef.current;
+          setTimeout(() => {
+            setKeys(loadSavedKeys());
+            startMatch(cfg);
+          }, 4000);
+        }
+      }
+    }
+  }, [matchState?.status, matchState?.id, autoPlay]);
 
   // ── Config screen ────────────────────────────────
   if (!matchState) {
@@ -49,8 +86,10 @@ export default function App() {
         <div className="connection-dot" data-connected={connected} title={connected ? 'Connected' : 'Disconnected'} />
         {error && <div className="error-toast">{error}</div>}
         <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onSave={setKeys} />
+        <Scoreboard open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} />
+        <button className="btn btn-secondary trophy-btn" onClick={() => setScoreboardOpen(true)} title="Scoreboard">🏆</button>
         <MusicPlayer ref={musicRef} />
-        <MatchConfigPanel onStart={handleStart} />
+        <MatchConfigPanel onStart={handleStart} autoPlay={autoPlay} onToggleAutoPlay={toggleAutoPlay} />
       </div>
     );
   }
@@ -88,9 +127,12 @@ export default function App() {
       <div className="connection-dot" data-connected={connected} title={connected ? 'Connected' : 'Disconnected'} />
       {error && <div className="error-toast">{error}</div>}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onSave={setKeys} />
+      <Scoreboard open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} currentGame={matchState.game} />
 
-      {/* Victory / game-over splash */}
-      <VictorySplash state={matchState} onNewMatch={resetMatch} />
+      {/* Victory / game-over splash — hidden during auto-play AI rematches */}
+      {!(autoPlay && matchState.white.type !== 'human' && matchState.black.type !== 'human') && (
+        <VictorySplash state={matchState} onNewMatch={resetMatch} />
+      )}
 
       {/* Top bar */}
       <header className="arena-header">
@@ -102,6 +144,7 @@ export default function App() {
         <MatchTimer state={matchState} />
         <div className="arena-header-right">
           <MusicPlayer ref={musicRef} />
+          <button className="btn btn-secondary btn-icon" onClick={() => setScoreboardOpen(true)} title="Scoreboard" style={{ opacity: 0.7 }}>🏆</button>
         </div>
       </header>
 
@@ -145,6 +188,20 @@ export default function App() {
               lastMove={lastMove ? { from: parseInt(lastMove.from), to: parseInt(lastMove.to) } : undefined}
               interactive={isHumanTurn}
               boardOrientation={boardOrientation === 'black' ? 'black' : 'white'}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'wargames' ? (
+            <WarGamesBoardView
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'tictactoe' ? (
+            <TicTacToeBoard
+              boardState={fen}
+              interactive={isHumanTurn}
               onHumanMove={submitHumanMove}
               legalMoves={matchState.legalMoves || []}
             />

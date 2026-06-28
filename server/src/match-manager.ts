@@ -23,6 +23,18 @@ import {
   buildCheckersRetryPrompt,
   parseCheckersMoveFromResponse,
 } from './games/checkers/prompt.js';
+import { WargamesEngine } from './games/wargames/engine.js';
+import {
+  buildWargamesPrompt,
+  buildWargamesRetryPrompt,
+  parseWargamesMoveFromResponse,
+} from './games/wargames/prompt.js';
+import { TicTacToeEngine } from './games/tictactoe/engine.js';
+import {
+  buildTTTPrompt,
+  buildTTTRetryPrompt,
+  parseTTTMoveFromResponse,
+} from './games/tictactoe/prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -77,6 +89,8 @@ class Match {
   private config: MatchConfig;
   private chessEngine: ChessEngine | null = null;
   private checkersEngine: CheckersEngine | null = null;
+  private wargamesEngine: WargamesEngine | null = null;
+  private tttEngine: TicTacToeEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -96,17 +110,18 @@ class Match {
   private whiteProvider: AIProvider | null = null;
   private blackProvider: AIProvider | null = null;
 
-  private get isCheckers(): boolean {
-    return this.config.game === 'checkers';
-  }
+  private get isCheckers(): boolean { return this.config.game === 'checkers'; }
+  private get isWargames(): boolean { return this.config.game === 'wargames'; }
+  private get isTTT(): boolean { return this.config.game === 'tictactoe'; }
 
   constructor(config: MatchConfig, socket: Socket) {
     this.id = uuid();
     this.config = config;
-    if (config.game === 'checkers') {
-      this.checkersEngine = new CheckersEngine();
-    } else {
-      this.chessEngine = new ChessEngine();
+    switch (config.game) {
+      case 'checkers': this.checkersEngine = new CheckersEngine(); break;
+      case 'wargames': this.wargamesEngine = new WargamesEngine(); break;
+      case 'tictactoe': this.tttEngine = new TicTacToeEngine(); break;
+      default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
     if (config.white.type !== 'human') {
@@ -120,28 +135,38 @@ class Match {
   // ── Game-agnostic engine helpers ───────────────────
 
   private getTurn(): 'w' | 'b' {
-    return this.isCheckers ? this.checkersEngine!.turn() : this.chessEngine!.turn();
+    if (this.isCheckers) return this.checkersEngine!.turn();
+    if (this.isWargames) return this.wargamesEngine!.turn();
+    if (this.isTTT) return this.tttEngine!.turn();
+    return this.chessEngine!.turn();
   }
 
   private getFen(): string {
-    return this.isCheckers ? this.checkersEngine!.boardState() : this.chessEngine!.fen();
+    if (this.isCheckers) return this.checkersEngine!.boardState();
+    if (this.isWargames) return this.wargamesEngine!.boardState();
+    if (this.isTTT) return this.tttEngine!.boardState();
+    return this.chessEngine!.fen();
   }
 
   private getPgn(): string {
-    if (this.isCheckers) {
-      return this.moveHistory.map((m) => m.san).join(', ');
-    }
+    if (this.isCheckers) return this.moveHistory.map((m) => m.san).join(', ');
+    if (this.isWargames) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isTTT) return this.moveHistory.map((m) => m.san).join(', ');
     return this.chessEngine!.pgn();
   }
 
   private getLegalMoves(): string[] {
-    return this.isCheckers
-      ? this.checkersEngine!.legalMovesNotation()
-      : this.chessEngine!.legalMovesUci();
+    if (this.isCheckers) return this.checkersEngine!.legalMovesNotation();
+    if (this.isWargames) return this.wargamesEngine!.legalMoves();
+    if (this.isTTT) return this.tttEngine!.legalMoves();
+    return this.chessEngine!.legalMovesUci();
   }
 
   private isOver(): boolean {
-    return this.isCheckers ? this.checkersEngine!.isGameOver() : this.chessEngine!.isGameOver();
+    if (this.isCheckers) return this.checkersEngine!.isGameOver();
+    if (this.isWargames) return this.wargamesEngine!.isGameOver();
+    if (this.isTTT) return this.tttEngine!.isGameOver();
+    return this.chessEngine!.isGameOver();
   }
 
   private buildPrompt(turn: 'w' | 'b', legalMoves: string[]): string {
@@ -153,6 +178,21 @@ class Match {
         moveHistory: this.moveHistory,
       });
     }
+    if (this.isWargames) {
+      return buildWargamesPrompt({
+        color: turn === 'w' ? 'Side A' : 'Side B',
+        board: this.wargamesEngine!.boardForPrompt(),
+        legalMoves,
+        moveHistory: this.moveHistory,
+      });
+    }
+    if (this.isTTT) {
+      return buildTTTPrompt(
+        turn === 'w' ? 'X' : 'O',
+        this.tttEngine!.boardForPrompt(),
+        legalMoves,
+      );
+    }
     return buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
@@ -163,18 +203,26 @@ class Match {
   }
 
   private buildRetry(invalidMove: string, legalMoves: string[]): string {
-    if (this.isCheckers) {
-      return buildCheckersRetryPrompt(invalidMove, legalMoves);
-    }
+    if (this.isCheckers) return buildCheckersRetryPrompt(invalidMove, legalMoves);
+    if (this.isWargames) return buildWargamesRetryPrompt(invalidMove, legalMoves);
+    if (this.isTTT) return buildTTTRetryPrompt(invalidMove, legalMoves);
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
   private parseResponse(raw: string, legalMoves: string[]): string | null {
     if (this.isCheckers) {
-      const parsed = parseCheckersMoveFromResponse(raw);
-      return parsed && legalMoves.includes(parsed) ? parsed : null;
+      const p = parseCheckersMoveFromResponse(raw);
+      return p && legalMoves.includes(p) ? p : null;
     }
-    // Chess: UCI primary parser + SAN fallback
+    if (this.isWargames) {
+      const p = parseWargamesMoveFromResponse(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isTTT) {
+      const p = parseTTTMoveFromResponse(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    // Chess: UCI primary + SAN fallback
     const parsed = parseMoveFromResponse(raw);
     if (parsed && legalMoves.includes(parsed)) return parsed;
     const candidates = extractMoveCandidates(raw);
@@ -188,40 +236,49 @@ class Match {
 
   private applyMove(move: string): { san: string; captured?: string; from: string; to: string } | null {
     if (this.isCheckers) {
-      const result = this.checkersEngine!.makeMove(move);
-      if (!result) return null;
+      const r = this.checkersEngine!.makeMove(move);
+      if (!r) return null;
       const parts = move.split('-');
-      return {
-        san: result.san,
-        captured: result.captured,
-        from: parts[0],
-        to: parts[parts.length - 1],
-      };
+      return { san: r.san, captured: r.captured, from: parts[0], to: parts[parts.length - 1] };
     }
-    const result = this.chessEngine!.makeMove(move);
-    if (!result) return null;
-    return { san: result.san, captured: result.captured, from: result.from, to: result.to };
+    if (this.isWargames) {
+      const r = this.wargamesEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isTTT) {
+      const r = this.tttEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    const r = this.chessEngine!.makeMove(move);
+    if (!r) return null;
+    return { san: r.san, captured: r.captured, from: r.from, to: r.to };
   }
 
   private checkGameOver(turn: 'w' | 'b'): void {
     if (!this.isOver()) return;
 
     if (this.isCheckers) {
-      const status = this.checkersEngine!.gameStatus();
-      if (status === 'black_wins') {
-        this.endGame('black', 'black_wins', 'Black wins — White has no moves');
-      } else if (status === 'white_wins') {
-        this.endGame('white', 'white_wins', 'White wins — Black has no moves');
-      } else {
-        this.endGame('draw', 'draw', 'Draw (40-move rule)');
-      }
+      const s = this.checkersEngine!.gameStatus();
+      if (s === 'black_wins') this.endGame('black', 'black_wins', 'Black wins');
+      else if (s === 'white_wins') this.endGame('white', 'white_wins', 'White wins');
+      else this.endGame('draw', 'draw', 'Draw');
+    } else if (this.isWargames) {
+      const s = this.wargamesEngine!.gameStatus();
+      const reason = this.wargamesEngine!.endReason();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', reason);
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', reason);
+      else this.endGame('draw', s === 'peace' ? 'peace' : 'draw', reason);
+    } else if (this.isTTT) {
+      const s = this.tttEngine!.gameStatus();
+      if (s === 'x_wins') this.endGame('white', 'x_wins', 'X wins!');
+      else if (s === 'o_wins') this.endGame('black', 'o_wins', 'O wins!');
+      else this.endGame('draw', 'draw', 'Draw — nobody wins');
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
-        this.endGame(
-          turn === 'w' ? 'white' : 'black',
-          'checkmate',
-          `Checkmate — ${turn === 'w' ? 'White' : 'Black'} wins`,
-        );
+        this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',
+          `Checkmate — ${turn === 'w' ? 'White' : 'Black'} wins`);
       } else {
         const reason = this.chessEngine!.drawReason();
         this.endGame('draw', this.chessEngine!.gameStatus() as GameStatus, reason);
@@ -455,7 +512,11 @@ class Match {
 
       // Delay between moves (auto mode)
       if (!this.stepMode && !this.paused) {
-        await this.delay(this.config.moveDelayMs);
+        // WarGames gets extra delay for trajectory animation
+        const delay = this.isWargames
+          ? Math.max(this.config.moveDelayMs, 2500)
+          : this.config.moveDelayMs;
+        await this.delay(delay);
       }
 
       // If paused (user clicked pause during or after the move), wait

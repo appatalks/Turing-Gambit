@@ -4,6 +4,8 @@ import { PROVIDER_OPTIONS } from '../types';
 
 interface Props {
   onStart: (config: MatchConfig) => void;
+  autoPlay?: boolean;
+  onToggleAutoPlay?: () => void;
 }
 
 const DEFAULT_CONFIG: MatchConfig = {
@@ -25,7 +27,7 @@ function loadSavedConfig(): MatchConfig {
   return DEFAULT_CONFIG;
 }
 
-export function MatchConfigPanel({ onStart }: Props) {
+export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props) {
   const [config, setConfig] = useState<MatchConfig>(loadSavedConfig);
 
   // Persist config changes
@@ -66,18 +68,14 @@ export function MatchConfigPanel({ onStart }: Props) {
 
       {/* Game selector */}
       <div className="game-selector">
-        <button
-          className={`game-btn ${config.game === 'chess' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'chess' }))}
-        >
-          ♟ Chess
-        </button>
-        <button
-          className={`game-btn ${config.game === 'checkers' ? 'game-btn-active' : ''}`}
-          onClick={() => setConfig((c) => ({ ...c, game: 'checkers' }))}
-        >
-          ⬤ Checkers
-        </button>
+        <button className={`game-btn ${config.game === 'chess' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'chess' }))}>♟ Chess</button>
+        <button className={`game-btn ${config.game === 'checkers' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'checkers' }))}>⬤ Checkers</button>
+        <button className={`game-btn ${config.game === 'wargames' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'wargames' }))}>☢ WarGames</button>
+        <button className={`game-btn ${config.game === 'tictactoe' ? 'game-btn-active' : ''}`}
+          onClick={() => setConfig((c) => ({ ...c, game: 'tictactoe' }))}>✕ Tic-Tac-Toe</button>
       </div>
 
       <div className="config-panels">
@@ -139,9 +137,17 @@ export function MatchConfigPanel({ onStart }: Props) {
         </div>
       </div>
 
-      <button className="btn btn-primary btn-start" onClick={() => onStart(config)}>
-        ▶ Start Match
-      </button>
+      <div className="config-start-row">
+        {onToggleAutoPlay && (
+          <label className="autoplay-toggle">
+            <input type="checkbox" checked={!!autoPlay} onChange={onToggleAutoPlay} />
+            <span>🔁 Auto-play (AI vs AI rematch)</span>
+          </label>
+        )}
+        <button className="btn btn-primary btn-start" onClick={() => onStart(config)}>
+          ▶ Start Match
+        </button>
+      </div>
     </div>
   );
 }

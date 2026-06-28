@@ -21,6 +21,9 @@ const STATUS_LABELS: Record<GameStatus, { text: string; cls: string }> = {
   max_moves_reached: { text: 'Max Moves', cls: 'badge-paused' },
   black_wins: { text: 'Black Wins', cls: 'badge-completed' },
   white_wins: { text: 'White Wins', cls: 'badge-completed' },
+  peace: { text: 'Peace', cls: 'badge-completed' },
+  x_wins: { text: 'X Wins', cls: 'badge-completed' },
+  o_wins: { text: 'O Wins', cls: 'badge-completed' },
 };
 
 export function ControlPanel({

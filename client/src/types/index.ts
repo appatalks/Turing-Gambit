@@ -20,7 +20,7 @@ export interface ProviderConfig {
 
 // ─── Match Types ────────────────────────────────────────
 
-export type GameType = 'chess' | 'checkers';
+export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe';
 
 export interface MatchConfig {
   game: GameType;
@@ -41,7 +41,10 @@ export type GameStatus =
   | 'invalid_move_failure'
   | 'max_moves_reached'
   | 'black_wins'
-  | 'white_wins';
+  | 'white_wins'
+  | 'peace'
+  | 'x_wins'
+  | 'o_wins';
 
 export type MatchStatus =
   | 'configuring'
