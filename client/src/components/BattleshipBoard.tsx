@@ -6,8 +6,8 @@ interface Props {  boardState: string; // "gridA gridB turn"
   legalMoves?: string[];
 }
 
-const SIZE = 8;
-const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const SIZE = 10;
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 
 function Grid({
   cells,
@@ -62,8 +62,8 @@ export function BattleshipBoard({
   legalMoves = [],
 }: Props) {
   const parts = boardState.split(' ');
-  const gridA = (parts[0] || '.'.repeat(64)).padEnd(64, '.');
-  const gridB = (parts[1] || '.'.repeat(64)).padEnd(64, '.');
+  const gridA = (parts[0] || '.'.repeat(SIZE * SIZE)).padEnd(SIZE * SIZE, '.');
+  const gridB = (parts[1] || '.'.repeat(SIZE * SIZE)).padEnd(SIZE * SIZE, '.');
   const turn = parts[2] || 'w';
 
   function play(n: string) {

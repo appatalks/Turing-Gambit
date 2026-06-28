@@ -1,13 +1,14 @@
 // ─── Battleship Engine ──────────────────────────────────
-// 8×8 grids. Ships auto-placed randomly per side (hidden).
-// Players alternate firing at coordinates A1-H8. Sink all to win.
+// 10×10 grids. Ships auto-placed randomly per side (hidden).
+// Players alternate firing at coordinates A1-J10. Sink all to win.
 // Each player only sees their own shot results (hit/miss).
 
 export type BSColor = 'w' | 'b';
 export type BSStatus = 'active' | 'white_wins' | 'black_wins';
 
-const SIZE = 8;
-const FLEET = [4, 3, 3, 2]; // ship lengths
+const SIZE = 10;
+// Classic fleet: Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2
+const FLEET = [5, 4, 3, 3, 2]; // ship lengths
 
 type Cell = 'empty' | 'ship' | 'hit' | 'miss';
 
@@ -69,7 +70,7 @@ export class BattleshipEngine {
   }
 
   private coordToIdx(coord: string): number | null {
-    const m = coord.trim().toUpperCase().match(/^([A-H])([1-8])$/);
+    const m = coord.trim().toUpperCase().match(/^([A-J])(10|[1-9])$/);
     if (!m) return null;
     const col = m[1].charCodeAt(0) - 65;
     const row = parseInt(m[2]) - 1;
@@ -102,16 +103,17 @@ export class BattleshipEngine {
   boardForPrompt(): string {
     // Show the FIRING player's view of the enemy grid (their shot results only)
     const enemy = this.currentTurn === 'w' ? this.gridB : this.gridA;
-    const lines: string[] = ['  A B C D E F G H'];
+    const header = '   ' + Array.from({ length: SIZE }, (_, c) => String.fromCharCode(65 + c)).join(' ');
+    const lines: string[] = [header];
     for (let r = 0; r < SIZE; r++) {
-      let line = (r + 1) + ' ';
+      let line = String(r + 1).padStart(2, ' ') + ' ';
       for (let c = 0; c < SIZE; c++) {
         const idx = r * SIZE + c;
         if (enemy.hits.has(idx)) line += 'X ';
         else if (enemy.shots.has(idx)) line += 'o ';
         else line += '. ';
       }
-      lines.push(line.trim());
+      lines.push(line.trimEnd());
     }
     const remaining = enemy.ships.filter((sh) => !sh.every((i) => enemy.hits.has(i))).length;
     return lines.join('\n') + `\n\nEnemy ships remaining: ${remaining}/${FLEET.length}\nX=hit, o=miss, .=unfired`;

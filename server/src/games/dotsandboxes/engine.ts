@@ -1,11 +1,11 @@
 // ─── Dots and Boxes Engine ──────────────────────────────
-// 3×3 boxes (4×4 dots). Draw edges; complete a box to score
+// 8×8 boxes (9×9 dots). Draw edges; complete a box to score
 // and earn another turn. Most boxes wins.
 
 export type DBColor = 'w' | 'b';
 export type DBStatus = 'active' | 'white_wins' | 'black_wins' | 'draw';
 
-const SIZE = 3; // boxes per side
+const SIZE = 8; // boxes per side
 const DOTS = SIZE + 1;
 
 export class DotsAndBoxesEngine {

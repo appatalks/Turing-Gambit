@@ -258,6 +258,7 @@
 
 .config-screen {
   max-width: 900px;
+  width: 100%;
   margin: 0 auto;
   padding: 40px 0;
   display: flex;
@@ -265,6 +266,9 @@
   align-items: center;
   gap: 32px;
   animation: slideUp 0.5s ease-out;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .config-header {
@@ -1581,29 +1585,29 @@
 .dab-sb { color: var(--accent-purple); }
 .dab-grid { display: flex; flex-direction: column; }
 .dab-dotrow, .dab-boxrow { display: flex; align-items: center; }
-.dab-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--text-dim, #9aa); box-shadow: 0 0 6px rgba(255,255,255,0.3); }
-.dab-hedge { width: 56px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; transition: background 0.15s; }
-.dab-vedge { width: 6px; height: 56px; background: rgba(255,255,255,0.08); border-radius: 3px; transition: background 0.15s; }
-.dab-on { background: var(--accent-gold); box-shadow: 0 0 8px rgba(255,215,0,0.5); }
+.dab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-dim, #9aa); box-shadow: 0 0 4px rgba(255,255,255,0.3); flex: 0 0 auto; }
+.dab-hedge { width: 30px; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; transition: background 0.15s; flex: 0 0 auto; }
+.dab-vedge { width: 5px; height: 30px; background: rgba(255,255,255,0.08); border-radius: 3px; transition: background 0.15s; flex: 0 0 auto; }
+.dab-on { background: var(--accent-gold); box-shadow: 0 0 6px rgba(255,215,0,0.5); }
 .dab-legal { cursor: pointer; }
 .dab-legal:hover { background: var(--accent); }
 .dab-box {
-  width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 1.4rem;
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.8rem; flex: 0 0 auto;
 }
 .dab-bw { background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); }
 .dab-bb { background: color-mix(in srgb, var(--accent-purple) 25%, transparent); color: var(--accent-purple); }
 
 /* ── Battleship ───────────────────────────────────── */
-.bs-wrap { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%; height: 100%; min-height: 300px; }
+.bs-wrap { display: flex; gap: 22px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%; height: 100%; min-height: 300px; }
 .bs-grid-block { display: flex; flex-direction: column; gap: 8px; }
 .bs-grid-title { text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); }
 .bs-grid-title.bs-firing { color: var(--accent-gold); text-shadow: 0 0 8px rgba(255,215,0,0.4); }
-.bs-grid { display: grid; grid-template-columns: repeat(9, 30px); gap: 2px; }
-.bs-corner, .bs-head { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted); }
+.bs-grid { display: grid; grid-template-columns: repeat(11, 24px); gap: 2px; }
+.bs-corner, .bs-head { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; color: var(--text-muted); }
 .bs-cell {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 4px; font-size: 0.9rem; background: rgba(20,60,120,0.4);
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; font-size: 0.75rem; background: rgba(20,60,120,0.4);
   border: 1px solid rgba(255,255,255,0.05);
 }
 .bs-water { background: rgba(20,60,120,0.4); }
@@ -1616,6 +1620,8 @@
 /* ── Prisoner's Dilemma ───────────────────────────── */
 .pd-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; min-height: 300px; padding: 16px; }
 .pd-header { font-weight: 700; font-size: 1.1rem; color: var(--accent-gold); }
+.pd-explain { max-width: 440px; text-align: center; font-size: 0.82rem; line-height: 1.5; color: var(--text-muted); }
+.pd-explain b { color: var(--text); }
 .pd-matrix { border-collapse: collapse; }
 .pd-matrix th, .pd-matrix td { border: 1px solid var(--border-subtle); padding: 8px 14px; text-align: center; font-size: 0.9rem; }
 .pd-matrix th { color: var(--text-muted); font-weight: 600; }

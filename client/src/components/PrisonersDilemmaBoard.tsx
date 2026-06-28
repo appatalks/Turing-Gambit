@@ -39,6 +39,13 @@ export function PrisonersDilemmaBoard({
     <div className="pd-wrap">
       <div className="pd-header">Round {round} / 10</div>
 
+      <div className="pd-explain">
+        Two prisoners each secretly choose to <b>Cooperate</b> (stay silent) or <b>Defect</b> (betray).
+        They decide <i>at the same time</i>, without knowing the other's choice. Each cell below shows the
+        points <b>A / B</b> earn for that combination. Betraying a cooperator pays the most (5), but if both
+        betray, both do poorly (1). Highest total after 10 rounds wins.
+      </div>
+
       <table className="pd-matrix">
         <thead>
           <tr><th></th><th>B: Cooperate</th><th>B: Defect</th></tr>
