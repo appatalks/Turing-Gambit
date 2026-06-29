@@ -49,6 +49,12 @@ import { RiskEngine } from './games/risk/engine.js';
 import { buildRiskPrompt, buildRiskRetryPrompt, parseRiskMove, fuzzyRiskMatch } from './games/risk/prompt.js';
 import { MarioEngine } from './games/mario/engine.js';
 import { buildMarioPrompt, buildMarioRetryPrompt, parseMarioMove } from './games/mario/prompt.js';
+import { TwentyQuestionsEngine } from './games/twentyquestions/engine.js';
+import { buildTQPrompt, buildTQRetryPrompt, parseTQMove } from './games/twentyquestions/prompt.js';
+import { MysticQuestEngine } from './games/mysticquest/engine.js';
+import { buildMQPrompt, buildMQRetryPrompt, parseMQMove } from './games/mysticquest/prompt.js';
+import { PokerEngine } from './games/poker/engine.js';
+import { buildPokerPrompt, buildPokerRetryPrompt, parsePokerMove } from './games/poker/prompt.js';
 import { buildStrategyPrompt, buildStrategyRetryPrompt, parseStrategyCode } from './strategy-prompt.js';
 import { createProvider } from './providers/registry.js';
 
@@ -113,6 +119,9 @@ class Match {
   private debateEngine: DebateEngine | null = null;
   private riskEngine: RiskEngine | null = null;
   private marioEngine: MarioEngine | null = null;
+  private tqEngine: TwentyQuestionsEngine | null = null;
+  private mqEngine: MysticQuestEngine | null = null;
+  private pokerEngine: PokerEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -142,6 +151,9 @@ class Match {
   private get isDebate(): boolean { return this.config.game === 'debate'; }
   private get isRisk(): boolean { return this.config.game === 'risk'; }
   private get isMario(): boolean { return this.config.game === 'mario'; }
+  private get isTQ(): boolean { return this.config.game === 'twentyquestions'; }
+  private get isMQ(): boolean { return this.config.game === 'mysticquest'; }
+  private get isPoker(): boolean { return this.config.game === 'poker'; }
   private get isArcade(): boolean { return this.isMario; }
   private get isChess(): boolean { return this.config.game === 'chess' || !this.config.game; }
 
@@ -159,6 +171,9 @@ class Match {
       case 'debate': this.debateEngine = new DebateEngine(config.debateTopic); break;
       case 'risk': this.riskEngine = new RiskEngine(); break;
       case 'mario': this.marioEngine = new MarioEngine(); break;
+      case 'twentyquestions': this.tqEngine = new TwentyQuestionsEngine(); break;
+      case 'mysticquest': this.mqEngine = new MysticQuestEngine(); break;
+      case 'poker': this.pokerEngine = new PokerEngine(); break;
       default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
@@ -186,6 +201,9 @@ class Match {
     if (this.isDebate) return this.debateEngine!.turn();
     if (this.isRisk) return this.riskEngine!.turn();
     if (this.isMario) return this.marioEngine!.turn();
+    if (this.isTQ) return this.tqEngine!.turn();
+    if (this.isMQ) return this.mqEngine!.turn();
+    if (this.isPoker) return this.pokerEngine!.turn();
     return this.chessEngine!.turn();
   }
 
@@ -200,6 +218,9 @@ class Match {
     if (this.isDebate) return this.debateEngine!.boardState();
     if (this.isRisk) return this.riskEngine!.boardState();
     if (this.isMario) return this.marioEngine!.boardState();
+    if (this.isTQ) return this.tqEngine!.boardState();
+    if (this.isMQ) return this.mqEngine!.boardState();
+    if (this.isPoker) return this.pokerEngine!.boardState();
     return this.chessEngine!.fen();
   }
 
@@ -210,6 +231,9 @@ class Match {
     if (this.isDebate) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isC4 || this.isDAB || this.isBS || this.isPD) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isMario) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isTQ) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isMQ) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isPoker) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isRisk) return this.moveHistory.map((m) => m.san).join('\n');
     return this.chessEngine!.pgn();
   }
@@ -225,6 +249,9 @@ class Match {
     if (this.isDebate) return this.debateEngine!.legalMoves();
     if (this.isRisk) return this.riskEngine!.legalMoves();
     if (this.isMario) return this.marioEngine!.legalMoves();
+    if (this.isTQ) return this.tqEngine!.legalMoves();
+    if (this.isMQ) return this.mqEngine!.legalMoves();
+    if (this.isPoker) return this.pokerEngine!.legalMoves();
     return this.chessEngine!.legalMovesUci();
   }
 
@@ -239,6 +266,9 @@ class Match {
     if (this.isDebate) return this.debateEngine!.isGameOver();
     if (this.isRisk) return this.riskEngine!.isGameOver();
     if (this.isMario) return this.marioEngine!.isGameOver();
+    if (this.isTQ) return this.tqEngine!.isGameOver();
+    if (this.isMQ) return this.mqEngine!.isGameOver();
+    if (this.isPoker) return this.pokerEngine!.isGameOver();
     return this.chessEngine!.isGameOver();
   }
 
@@ -292,6 +322,15 @@ class Match {
     if (this.isMario) {
       return { prompt: buildMarioPrompt(this.marioEngine!.boardForPrompt(turn), legalMoves) };
     }
+    if (this.isTQ) {
+      return { prompt: buildTQPrompt(this.tqEngine!.boardForPrompt(turn), legalMoves) };
+    }
+    if (this.isMQ) {
+      return { prompt: buildMQPrompt(this.mqEngine!.boardForPrompt(turn), legalMoves) };
+    }
+    if (this.isPoker) {
+      return { prompt: buildPokerPrompt(this.pokerEngine!.boardForPrompt(turn), legalMoves) };
+    }
     return { prompt: buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
@@ -312,6 +351,9 @@ class Match {
     if (this.isDebate) return buildDebatePrompt(this.debateEngine!.boardForPrompt());
     if (this.isRisk) return buildRiskRetryPrompt(invalidMove, legalMoves);
     if (this.isMario) return buildMarioRetryPrompt(invalidMove, legalMoves);
+    if (this.isTQ) return buildTQRetryPrompt(invalidMove, legalMoves);
+    if (this.isMQ) return buildMQRetryPrompt(invalidMove, legalMoves);
+    if (this.isPoker) return buildPokerRetryPrompt(invalidMove, legalMoves);
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
@@ -356,6 +398,23 @@ class Match {
     }
     if (this.isMario) {
       const p = parseMarioMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isTQ) {
+      const p = parseTQMove(raw);
+      // TQ moves are freeform (SECRET:, ASK:, GUESS:, YES/NO/CORRECT/WRONG)
+      // Validate against legal actions type, not exact match
+      if (!p) return null;
+      const actionType = p.split(':')[0].toUpperCase().trim();
+      if (legalMoves.includes(actionType) || legalMoves.includes(p)) return p;
+      return null;
+    }
+    if (this.isMQ) {
+      const p = parseMQMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isPoker) {
+      const p = parsePokerMove(raw);
       return p && legalMoves.includes(p) ? p : null;
     }
     // Chess: UCI primary + SAN fallback
@@ -425,6 +484,21 @@ class Match {
       if (!r) return null;
       return { san: r.san, captured: r.captured, from: move, to: move };
     }
+    if (this.isTQ) {
+      const r = this.tqEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isMQ) {
+      const r = this.mqEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isPoker) {
+      const r = this.pokerEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
     const r = this.chessEngine!.makeMove(move);
     if (!r) return null;
     return { san: r.san, captured: r.captured, from: r.from, to: r.to };
@@ -484,6 +558,21 @@ class Match {
       if (s === 'white_wins') this.endGame('white', 'white_wins', 'Red runner reaches the flag first');
       else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Green runner reaches the flag first');
       else this.endGame('draw', 'draw', 'Draw — dead heat');
+    } else if (this.isTQ) {
+      const s = this.tqEngine!.gameStatus();
+      if (s === 'black_wins') this.endGame('black', 'black_wins', 'Questioner guessed the secret!');
+      else if (s === 'white_wins') this.endGame('white', 'white_wins', 'Answerer stumped the questioner!');
+      else this.endGame('draw', 'draw', 'Draw');
+    } else if (this.isMQ) {
+      const s = this.mqEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Warrior wins with more treasure!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Mage wins with more treasure!');
+      else this.endGame('draw', 'draw', 'Draw — equal treasure');
+    } else if (this.isPoker) {
+      const s = this.pokerEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'White wins all the chips!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Black wins all the chips!');
+      else this.endGame('draw', 'draw', 'Draw — equal chips');
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
         this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',

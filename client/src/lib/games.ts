@@ -39,6 +39,10 @@ export const GAMES: GameInfo[] = [
   { id: 'debate', icon: '⚖️', name: 'Debate', category: 'social', description: 'Argue a resolution; an AI judges.' },
   // ── Arcade ──
   { id: 'mario', icon: '🍄', name: 'Platform Race', category: 'arcade', description: 'Side-scrolling sprint to the flag.' },
+  // ── New Games ──
+  { id: 'poker', icon: '🃏', name: 'Poker', category: 'strategy', description: 'Texas Hold\'em heads-up. Bluff, bet, and win chips.' },
+  { id: 'twentyquestions', icon: '❓', name: '20 Questions', category: 'social', description: 'Guess the secret in 20 yes/no questions.' },
+  { id: 'mysticquest', icon: '⚔️', name: 'Mystic Quest', category: 'strategy', description: 'Dungeon crawl — fight monsters, grab treasure.' },
 ];
 
 export const GAMES_BY_ID: Record<GameType, GameInfo> = Object.fromEntries(
