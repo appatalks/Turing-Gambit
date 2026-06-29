@@ -34,11 +34,12 @@ export const GAMES: GameInfo[] = [
   { id: 'wargames', icon: '☢', name: 'WarGames', category: 'strategy', description: 'Global thermonuclear strategy.' },
   { id: 'battleship', icon: '🚢', name: 'Battleship', category: 'strategy', description: 'Hunt and sink the hidden fleet.' },
   { id: 'risk', icon: '🌍', name: 'Risk', category: 'strategy', description: 'Conquer the world, territory by territory.' },
+  { id: 'poker', icon: '🃏', name: 'Poker', category: 'strategy', description: 'Texas Hold\'em — bluff, bet, and read your opponent.' },
+  { id: 'mysticquest', icon: '🧙', name: 'Mystic Quest', category: 'strategy', description: 'Explore, fight monsters, and duel the rival hero.' },
   // ── Social ──
   { id: 'prisonersdilemma', icon: '🤝', name: "Prisoner's Dilemma", category: 'social', description: 'Cooperate or defect for points.' },
   { id: 'debate', icon: '⚖️', name: 'Debate', category: 'social', description: 'Argue a resolution; an AI judges.' },
-  // ── Arcade ──
-  { id: 'mario', icon: '🍄', name: 'Platform Race', category: 'arcade', description: 'Side-scrolling sprint to the flag.' },
+  { id: 'twentyquestions', icon: '❓', name: '20 Questions', category: 'social', description: 'Guess the secret word in 20 yes/no questions.' },
 ];
 
 export const GAMES_BY_ID: Record<GameType, GameInfo> = Object.fromEntries(

@@ -11,6 +11,9 @@ import { BattleshipBoard } from './components/BattleshipBoard';
 import { PrisonersDilemmaBoard } from './components/PrisonersDilemmaBoard';
 import { DebateBoard } from './components/DebateBoard';
 import { RiskBoard } from './components/RiskBoard';
+import { PokerBoard } from './components/PokerBoard';
+import { TwentyQuestionsBoard } from './components/TwentyQuestionsBoard';
+import { MysticQuestBoard } from './components/MysticQuestBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -245,6 +248,27 @@ export default function App() {
             />
           ) : matchState.game === 'risk' ? (
             <RiskBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'poker' ? (
+            <PokerBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'twentyquestions' ? (
+            <TwentyQuestionsBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'mysticquest' ? (
+            <MysticQuestBoard
               boardState={fen}
               interactive={isHumanTurn}
               onHumanMove={submitHumanMove}
