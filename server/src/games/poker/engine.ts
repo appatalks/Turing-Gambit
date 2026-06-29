@@ -399,7 +399,7 @@ export class PokerEngine {
   gameStatus(): PokerStatus {
     if (this.whiteChips <= 0) return 'black_wins';
     if (this.blackChips <= 0) return 'white_wins';
-    if (this.handNumber > this.maxHands) {
+    if (this.handNumber >= this.maxHands && this.handOver) {
       if (this.whiteChips > this.blackChips) return 'white_wins';
       if (this.blackChips > this.whiteChips) return 'black_wins';
       return 'draw';

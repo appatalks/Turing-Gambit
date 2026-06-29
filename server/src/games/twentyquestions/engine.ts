@@ -14,7 +14,7 @@ interface QA {
 export class TwentyQuestionsEngine {
   private secret: string = '';
   private history: QA[] = [];
-  private currentTurn: TQColor = 'w'; // w picks secret first, then alternates
+  private currentTurn: TQColor = 'w'; // w picks secret first, then b asks questions and w responds
   private phase: 'pick_secret' | 'question' | 'answer' | 'done' = 'pick_secret';
   private questionCount = 0;
   private guessResult: 'correct' | 'wrong' | null = null;

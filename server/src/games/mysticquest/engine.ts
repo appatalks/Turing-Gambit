@@ -142,7 +142,7 @@ export class MysticQuestEngine {
     switch (move) {
       case 'ATTACK': {
         if (room.type !== 'monster' || room.cleared) return null;
-        const dmg = this.currentTurn === 'w' ? 3 : 2;
+        const dmg = this.currentTurn === 'w' ? 3 : 2; // Warrior: 3 dmg, Mage: 2 dmg (or 4 with CAST at 1 HP cost)
         room.monsterHP! -= dmg;
         san = `${role} attacks for ${dmg} damage`;
         if (room.monsterHP! <= 0) {
