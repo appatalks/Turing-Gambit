@@ -47,9 +47,6 @@ import { DebateEngine } from './games/debate/engine.js';
 import { buildDebatePrompt, parseDebateMove } from './games/debate/prompt.js';
 import { RiskEngine } from './games/risk/engine.js';
 import { buildRiskPrompt, buildRiskRetryPrompt, parseRiskMove, fuzzyRiskMatch } from './games/risk/prompt.js';
-import { MarioEngine } from './games/mario/engine.js';
-import { buildMarioPrompt, buildMarioRetryPrompt, parseMarioMove } from './games/mario/prompt.js';
-import { buildStrategyPrompt, buildStrategyRetryPrompt, parseStrategyCode } from './strategy-prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -112,7 +109,6 @@ class Match {
   private pdEngine: PrisonersDilemmaEngine | null = null;
   private debateEngine: DebateEngine | null = null;
   private riskEngine: RiskEngine | null = null;
-  private marioEngine: MarioEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -141,8 +137,6 @@ class Match {
   private get isPD(): boolean { return this.config.game === 'prisonersdilemma'; }
   private get isDebate(): boolean { return this.config.game === 'debate'; }
   private get isRisk(): boolean { return this.config.game === 'risk'; }
-  private get isMario(): boolean { return this.config.game === 'mario'; }
-  private get isArcade(): boolean { return this.isMario; }
   private get isChess(): boolean { return this.config.game === 'chess' || !this.config.game; }
 
   constructor(config: MatchConfig, socket: Socket) {
@@ -158,7 +152,6 @@ class Match {
       case 'prisonersdilemma': this.pdEngine = new PrisonersDilemmaEngine(); break;
       case 'debate': this.debateEngine = new DebateEngine(config.debateTopic); break;
       case 'risk': this.riskEngine = new RiskEngine(); break;
-      case 'mario': this.marioEngine = new MarioEngine(); break;
       default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
@@ -185,7 +178,6 @@ class Match {
     if (this.isPD) return this.pdEngine!.turn();
     if (this.isDebate) return this.debateEngine!.turn();
     if (this.isRisk) return this.riskEngine!.turn();
-    if (this.isMario) return this.marioEngine!.turn();
     return this.chessEngine!.turn();
   }
 
@@ -199,7 +191,6 @@ class Match {
     if (this.isPD) return this.pdEngine!.boardState();
     if (this.isDebate) return this.debateEngine!.boardState();
     if (this.isRisk) return this.riskEngine!.boardState();
-    if (this.isMario) return this.marioEngine!.boardState();
     return this.chessEngine!.fen();
   }
 
@@ -209,7 +200,6 @@ class Match {
     if (this.isTTT) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isDebate) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isC4 || this.isDAB || this.isBS || this.isPD) return this.moveHistory.map((m) => m.san).join(', ');
-    if (this.isMario) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isRisk) return this.moveHistory.map((m) => m.san).join('\n');
     return this.chessEngine!.pgn();
   }
@@ -224,7 +214,6 @@ class Match {
     if (this.isPD) return this.pdEngine!.legalMoves();
     if (this.isDebate) return this.debateEngine!.legalMoves();
     if (this.isRisk) return this.riskEngine!.legalMoves();
-    if (this.isMario) return this.marioEngine!.legalMoves();
     return this.chessEngine!.legalMovesUci();
   }
 
@@ -238,7 +227,6 @@ class Match {
     if (this.isPD) return this.pdEngine!.isGameOver();
     if (this.isDebate) return this.debateEngine!.isGameOver();
     if (this.isRisk) return this.riskEngine!.isGameOver();
-    if (this.isMario) return this.marioEngine!.isGameOver();
     return this.chessEngine!.isGameOver();
   }
 
@@ -289,9 +277,6 @@ class Match {
     if (this.isRisk) {
       return { prompt: buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves) };
     }
-    if (this.isMario) {
-      return { prompt: buildMarioPrompt(this.marioEngine!.boardForPrompt(turn), legalMoves) };
-    }
     return { prompt: buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
       fen: this.chessEngine!.fen(),
@@ -311,7 +296,6 @@ class Match {
     if (this.isPD) return buildPDRetryPrompt();
     if (this.isDebate) return buildDebatePrompt(this.debateEngine!.boardForPrompt());
     if (this.isRisk) return buildRiskRetryPrompt(invalidMove, legalMoves);
-    if (this.isMario) return buildMarioRetryPrompt(invalidMove, legalMoves);
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
@@ -353,10 +337,6 @@ class Match {
       if (p && legalMoves.includes(p)) return p;
       // Lenient fallback for models that don't follow the exact grammar.
       return fuzzyRiskMatch(raw, legalMoves);
-    }
-    if (this.isMario) {
-      const p = parseMarioMove(raw);
-      return p && legalMoves.includes(p) ? p : null;
     }
     // Chess: UCI primary + SAN fallback
     const parsed = parseMoveFromResponse(raw);
@@ -420,11 +400,6 @@ class Match {
       const to = parts[2] || from;
       return { san: r.san, captured: r.captured, from, to };
     }
-    if (this.isMario) {
-      const r = this.marioEngine!.makeMove(move);
-      if (!r) return null;
-      return { san: r.san, captured: r.captured, from: move, to: move };
-    }
     const r = this.chessEngine!.makeMove(move);
     if (!r) return null;
     return { san: r.san, captured: r.captured, from: r.from, to: r.to };
@@ -479,11 +454,6 @@ class Match {
       const s = this.riskEngine!.gameStatus();
       if (s === 'white_wins') this.endGame('white', 'white_wins', 'Blue conquered the world');
       else this.endGame('black', 'black_wins', 'Red conquered the world');
-    } else if (this.isMario) {
-      const s = this.marioEngine!.gameStatus();
-      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Red runner reaches the flag first');
-      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Green runner reaches the flag first');
-      else this.endGame('draw', 'draw', 'Draw — dead heat');
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
         this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',
@@ -502,11 +472,7 @@ class Match {
   async start(): Promise<void> {
     this.running = true;
     this.emitState();
-    if (this.isArcade) {
-      await this.strategyGameLoop();
-    } else {
-      await this.gameLoop();
-    }
+    await this.gameLoop();
   }
 
   pause(): void {
@@ -693,7 +659,7 @@ class Match {
 
       // Fallback: auto-pick a legal move for games where forfeiting
       // would be pointless (Battleship, Dots & Boxes, Tic-Tac-Toe).
-      if (!moveStr && this.running && (this.isBS || this.isDAB || this.isTTT || this.isMario) && legalMoves.length > 0) {
+      if (!moveStr && this.running && (this.isBS || this.isDAB || this.isTTT) && legalMoves.length > 0) {
         moveStr = legalMoves[Math.floor(Math.random() * legalMoves.length)];
         console.log(`[Arena] Auto-pick fallback: ${moveStr}`);
       }
@@ -767,157 +733,6 @@ class Match {
         if (!this.running) return;
       }
     }
-  }
-
-  // ── Strategy Game Loop (arcade games) ──────────────────
-  // Server gathers strategy code from AI/human, sends it to the client.
-  // Client runs the game at 60fps locally, then reports the result back.
-
-  private async strategyGameLoop(): Promise<void> {
-    const game = this.config.game!;
-    const wConfig = this.config.white;
-    const bConfig = this.config.black;
-    const wIsHuman = wConfig.type === 'human';
-    const bIsHuman = bConfig.type === 'human';
-    const humanSide = wIsHuman ? 'w' : bIsHuman ? 'b' : null;
-
-    // ── Phase 1: Get AI strategy code (skip human side entirely) ──
-    let whiteCode: string | null = null;
-    let blackCode: string | null = null;
-
-    if (!wIsHuman) {
-      whiteCode = await this.requestStrategy('w', game, null, undefined);
-      if (!this.running) return;
-    }
-    if (!bIsHuman) {
-      blackCode = await this.requestStrategy('b', game, null, undefined);
-      if (!this.running) return;
-    }
-
-    // ── Phase 2: Send to client — game starts immediately ──
-    this.thinking = false;
-    this.thinkingPlayer = null;
-
-    const wCodeFinal = whiteCode || this.defaultStrategyCode(game);
-    const bCodeFinal = blackCode || this.defaultStrategyCode(game);
-
-    this.socket.emit('arcade-run', {
-      game,
-      iteration: 1,
-      whiteCode: wCodeFinal,
-      blackCode: bCodeFinal,
-      humanSide,
-    });
-
-    // ── Phase 3: Wait for game to finish ──
-    const result = await this.waitForArcadeResult();
-    if (!this.running) return;
-
-    // Record result
-    this.moveHistory.push({
-      moveNumber: 1,
-      color: 'w',
-      san: result.reason,
-      uci: 'arcade-final',
-      fen: result.reason,
-      latencyMs: result.ticks * 16,
-      retryCount: 0,
-      invalidAttempts: [],
-      rawResponse: '',
-      prompt: '',
-    });
-
-    // ── Phase 4: End game ──
-    if (result.winner === 'white') this.endGame('white', 'white_wins', result.reason);
-    else if (result.winner === 'black') this.endGame('black', 'black_wins', result.reason);
-    else this.endGame('draw', 'draw', result.reason);
-  }
-
-  /** Wait for the client to report an arcade game result. */
-  private waitForArcadeResult(): Promise<{ winner: 'white' | 'black' | 'draw' | 'continue'; reason: string; ticks: number; feedback?: string }> {
-    return new Promise((resolve) => {
-      this.socket.once('arcade-result', (data) => {
-        resolve(data);
-      });
-    });
-  }
-
-  /** Default strategy code as a string (sent to client for compilation). */
-  private defaultStrategyCode(game: string): string {
-    return `// Smart runner: scan ahead and jump at the right moment
-if (state.stuckFrames > 0) return 'JUMP';
-var pos = state.myPos;
-var n1 = state.track[pos + 1] || 'G';
-var n2 = state.track[pos + 2] || 'G';
-var n3 = state.track[pos + 3] || 'G';
-// Jump over immediate hazard
-if (n1 === 'P' || n1 === '#') return 'JUMP';
-// If next is safe but the one after is a hazard, run one step first
-if (n2 === 'P' || n2 === '#') return 'RUN';
-// Look further ahead — if hazard at +3, keep running to get closer first
-return 'RUN';`;
-  }
-
-  /** Request a strategy from an AI provider. */
-  private async requestStrategy(side: 'w' | 'b', game: string, prevCode: string | null, feedback?: string): Promise<string | null> {
-    const provider = (side === 'w' ? this.whiteProvider : this.blackProvider)!;
-    const prompt = buildStrategyPrompt(game, side, prevCode || undefined, feedback);
-
-    this.thinking = true;
-    this.thinkingPlayer = side;
-    this.emitState();
-
-    this.socket.emit('thinking-chunk', { color: side, text: feedback ? '\n📝 Revising strategy...\n' : '\n📝 Writing strategy...\n' });
-
-    try {
-      const result = await provider.getMove({
-        prompt,
-        onChunk: (text: string) => {
-          this.socket.emit('thinking-chunk', { color: side, text });
-        },
-      });
-
-      const code = parseStrategyCode(result.rawResponse);
-
-      // Quick syntax check (client will do full execution)
-      try {
-        new Function('state', code);
-      } catch (syntaxErr: any) {
-        // Try one retry
-        this.socket.emit('thinking-chunk', { color: side, text: `\n⚠️ Syntax error: ${syntaxErr.message}\nRetrying...\n` });
-        const retryResult = await provider.getMove({
-          prompt: buildStrategyRetryPrompt(syntaxErr.message, game),
-          onChunk: (text: string) => {
-            this.socket.emit('thinking-chunk', { color: side, text });
-          },
-        });
-        return parseStrategyCode(retryResult.rawResponse);
-      }
-
-      return code;
-    } catch (err: any) {
-      this.socket.emit('thinking-chunk', { color: side, text: `\n❌ Error: ${err.message}\n` });
-      return null;
-    }
-  }
-
-  /** Wait for a human to submit strategy code, with a countdown. */
-  private waitForHumanStrategy(side: 'w' | 'b', timeoutMs: number): Promise<string | null> {
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        this.socket.removeAllListeners('submit-strategy');
-        resolve(null); // use previous strategy
-      }, timeoutMs);
-
-      this.socket.once('submit-strategy', (data: { side: string; code: string }) => {
-        clearTimeout(timer);
-        if (data.side === side) {
-          resolve(data.code);
-        } else {
-          resolve(null);
-        }
-      });
-    });
   }
 
   // ── Helpers ────────────────────────────────────────────
