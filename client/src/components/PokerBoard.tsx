@@ -5,34 +5,94 @@ interface Props {
   legalMoves?: string[];
 }
 
-const SUIT_SYMBOLS: Record<string, string> = { h: '♥', d: '♦', c: '♣', s: '♠' };
-const SUIT_COLORS: Record<string, string> = { h: '#e74c3c', d: '#e74c3c', c: '#2c3e50', s: '#2c3e50' };
+const SUIT_INFO: Record<string, { symbol: string; color: string }> = {
+  h: { symbol: '♥', color: '#e74c3c' },
+  d: { symbol: '♦', color: '#e74c3c' },
+  c: { symbol: '♣', color: '#1a1a2e' },
+  s: { symbol: '♠', color: '#1a1a2e' },
+};
+
+function displayRank(rank: string): string {
+  if (rank === '11') return 'J';
+  if (rank === '12') return 'Q';
+  if (rank === '13') return 'K';
+  if (rank === '14') return 'A';
+  return rank;
+}
 
 function parseCard(token: string): { rank: string; suit: string } | null {
   const match = token.match(/^(\d+|[JQKA])([hdcs])$/i);
   if (!match) return null;
-  return { rank: match[1], suit: match[2].toLowerCase() };
+  let rank = match[1].toUpperCase();
+  if (rank === 'J') rank = '11';
+  if (rank === 'Q') rank = '12';
+  if (rank === 'K') rank = '13';
+  if (rank === 'A') rank = '14';
+  return { rank, suit: match[2].toLowerCase() };
 }
 
-function renderCard(token: string, index: number) {
+function CardFace({ token, faceDown }: { token?: string; faceDown?: boolean }) {
+  if (faceDown || !token) {
+    return (
+      <div className="pk-card pk-card-back">
+        <div className="pk-card-back-pattern">
+          <div className="pk-card-back-inner">♠♥♦♣</div>
+        </div>
+      </div>
+    );
+  }
+
   const card = parseCard(token);
-  if (!card) return <span key={index} className="poker-card poker-card-back">?</span>;
-  const symbol = SUIT_SYMBOLS[card.suit] || card.suit;
-  const color = SUIT_COLORS[card.suit] || '#2c3e50';
+  if (!card) return <div className="pk-card pk-card-back"><div className="pk-card-back-pattern">?</div></div>;
+
+  const info = SUIT_INFO[card.suit] || SUIT_INFO['s'];
+  const rank = displayRank(card.rank);
+
   return (
-    <span key={index} className="poker-card" style={{ color }}>
-      {card.rank}{symbol}
-    </span>
+    <div className="pk-card" style={{ '--card-color': info.color } as React.CSSProperties}>
+      <div className="pk-card-corner pk-card-tl">
+        <span className="pk-card-rank">{rank}</span>
+        <span className="pk-card-suit">{info.symbol}</span>
+      </div>
+      <div className="pk-card-center">
+        <span className="pk-card-big-suit">{info.symbol}</span>
+      </div>
+      <div className="pk-card-corner pk-card-br">
+        <span className="pk-card-rank">{rank}</span>
+        <span className="pk-card-suit">{info.symbol}</span>
+      </div>
+    </div>
   );
 }
 
-const ACTION_LABELS: Record<string, { label: string; cls: string }> = {
-  FOLD: { label: 'Fold', cls: 'poker-btn-fold' },
-  CHECK: { label: 'Check', cls: 'poker-btn-check' },
-  CALL: { label: 'Call', cls: 'poker-btn-call' },
-  RAISE_SMALL: { label: 'Raise Small', cls: 'poker-btn-raise' },
-  RAISE_BIG: { label: 'Raise Big', cls: 'poker-btn-raise' },
-  ALL_IN: { label: 'All In', cls: 'poker-btn-allin' },
+function ChipStack({ amount, label }: { amount: string; label?: string }) {
+  const n = parseInt(amount) || 0;
+  return (
+    <div className="pk-chips">
+      <div className="pk-chip-icon">
+        <div className="pk-chip" />
+      </div>
+      <span className="pk-chip-amount">{n.toLocaleString()}</span>
+      {label && <span className="pk-chip-label">{label}</span>}
+    </div>
+  );
+}
+
+const ACTION_INFO: Record<string, { label: string; icon: string; cls: string }> = {
+  FOLD: { label: 'Fold', icon: '🏳️', cls: 'pk-btn-fold' },
+  CHECK: { label: 'Check', icon: '✓', cls: 'pk-btn-check' },
+  CALL: { label: 'Call', icon: '📞', cls: 'pk-btn-call' },
+  RAISE_SMALL: { label: 'Raise', icon: '⬆', cls: 'pk-btn-raise' },
+  RAISE_BIG: { label: 'Big Raise', icon: '⬆⬆', cls: 'pk-btn-raise-big' },
+  ALL_IN: { label: 'All In', icon: '💥', cls: 'pk-btn-allin' },
+};
+
+const STREET_LABELS: Record<string, string> = {
+  preflop: 'Pre-Flop',
+  flop: 'Flop',
+  turn: 'Turn',
+  river: 'River',
+  showdown: 'Showdown',
 };
 
 export function PokerBoard({
@@ -41,7 +101,6 @@ export function PokerBoard({
   onHumanMove,
   legalMoves = [],
 }: Props) {
-  // Parse: hand:1 street:preflop pot:30 w_chips:990 b_chips:980 w_bet:10 b_bet:20 community:- w_hole:Ah,Kd b_hole:9s,3c turn:w
   const fields: Record<string, string> = {};
   for (const token of boardState.split(' ')) {
     const sep = token.indexOf(':');
@@ -64,59 +123,101 @@ export function PokerBoard({
   const wHole = wHoleStr === '-' ? [] : wHoleStr.split(',');
   const bHole = bHoleStr === '-' ? [] : bHoleStr.split(',');
 
+  // Pad community to 5 slots for visual layout
+  const communitySlots: (string | null)[] = [];
+  for (let i = 0; i < 5; i++) communitySlots.push(community[i] || null);
+
   function play(action: string) {
     if (!interactive || !onHumanMove) return;
     if (!legalMoves.includes(action)) return;
     onHumanMove(action);
   }
 
+  const potNum = parseInt(pot) || 0;
+
   return (
-    <div className="poker-wrap">
-      <div className="poker-info">
-        <span className="poker-hand">Hand {hand}</span>
-        <span className="poker-street">{street.toUpperCase()}</span>
+    <div className="pk-table">
+      {/* Header */}
+      <div className="pk-header">
+        <span className="pk-hand-num">Hand {hand}/20</span>
+        <span className="pk-street-badge">{STREET_LABELS[street] || street}</span>
       </div>
 
-      {/* Black (top) */}
-      <div className={`poker-player ${turn === 'b' ? 'poker-active' : ''}`}>
-        <div className="poker-label">Black</div>
-        <div className="poker-chips">💰 {bChips} <span className="poker-bet">(bet {bBet})</span></div>
-        <div className="poker-hole">
-          {bHole.length > 0 ? bHole.map(renderCard) : <span className="poker-hidden">🂠 🂠</span>}
+      {/* Felt area */}
+      <div className="pk-felt">
+        {/* Black player (top) */}
+        <div className={`pk-seat pk-seat-top ${turn === 'b' ? 'pk-seat-active' : ''}`}>
+          <div className="pk-seat-info">
+            <span className="pk-seat-name">Player 2</span>
+            <ChipStack amount={bChips} />
+          </div>
+          <div className="pk-hand">
+            {bHole.length > 0
+              ? bHole.map((c, i) => <CardFace key={i} token={c} />)
+              : <>
+                  <CardFace faceDown />
+                  <CardFace faceDown />
+                </>
+            }
+          </div>
+          {parseInt(bBet) > 0 && (
+            <div className="pk-bet-area">
+              <ChipStack amount={bBet} label="bet" />
+            </div>
+          )}
+        </div>
+
+        {/* Community cards (center) */}
+        <div className="pk-center">
+          <div className="pk-pot-display">
+            <div className="pk-pot-chips" />
+            <span className="pk-pot-amount">Pot: {potNum.toLocaleString()}</span>
+          </div>
+          <div className="pk-community">
+            {communitySlots.map((c, i) => (
+              <div key={i} className={`pk-community-slot ${c ? 'pk-community-dealt' : ''}`}>
+                {c ? <CardFace token={c} /> : <div className="pk-card pk-card-placeholder" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* White player (bottom) */}
+        <div className={`pk-seat pk-seat-bottom ${turn === 'w' ? 'pk-seat-active' : ''}`}>
+          {parseInt(wBet) > 0 && (
+            <div className="pk-bet-area">
+              <ChipStack amount={wBet} label="bet" />
+            </div>
+          )}
+          <div className="pk-hand">
+            {wHole.length > 0
+              ? wHole.map((c, i) => <CardFace key={i} token={c} />)
+              : <>
+                  <CardFace faceDown />
+                  <CardFace faceDown />
+                </>
+            }
+          </div>
+          <div className="pk-seat-info">
+            <span className="pk-seat-name">Player 1</span>
+            <ChipStack amount={wChips} />
+          </div>
         </div>
       </div>
 
-      {/* Community & pot */}
-      <div className="poker-community">
-        <div className="poker-pot">Pot: {pot}</div>
-        <div className="poker-cards">
-          {community.length > 0
-            ? community.map(renderCard)
-            : <span className="poker-empty">No community cards yet</span>}
-        </div>
-      </div>
-
-      {/* White (bottom) */}
-      <div className={`poker-player ${turn === 'w' ? 'poker-active' : ''}`}>
-        <div className="poker-label">White</div>
-        <div className="poker-chips">💰 {wChips} <span className="poker-bet">(bet {wBet})</span></div>
-        <div className="poker-hole">
-          {wHole.length > 0 ? wHole.map(renderCard) : <span className="poker-hidden">🂠 🂠</span>}
-        </div>
-      </div>
-
-      {/* Action buttons */}
+      {/* Action bar */}
       {interactive && legalMoves.length > 0 && (
-        <div className="poker-actions">
+        <div className="pk-actions">
           {legalMoves.map((move) => {
-            const info = ACTION_LABELS[move] || { label: move, cls: '' };
+            const info = ACTION_INFO[move] || { label: move, icon: '▶', cls: '' };
             return (
               <button
                 key={move}
-                className={`poker-btn ${info.cls}`}
+                className={`pk-action-btn ${info.cls}`}
                 onClick={() => play(move)}
               >
-                {info.label}
+                <span className="pk-action-icon">{info.icon}</span>
+                <span className="pk-action-label">{info.label}</span>
               </button>
             );
           })}

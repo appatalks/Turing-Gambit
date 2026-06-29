@@ -53,6 +53,14 @@ import { TwentyQuestionsEngine } from './games/twentyquestions/engine.js';
 import { buildTQPrompt, buildTQRetryPrompt, parseTQMove } from './games/twentyquestions/prompt.js';
 import { MysticQuestEngine } from './games/mysticquest/engine.js';
 import { buildMQPrompt, buildMQRetryPrompt, parseMQMove } from './games/mysticquest/prompt.js';
+import { ZorkEngine } from './games/zork/engine.js';
+import { buildZorkPrompt, buildZorkRetryPrompt, parseZorkMove } from './games/zork/prompt.js';
+import { GoEngine } from './games/go/engine.js';
+import { buildGoPrompt, buildGoRetryPrompt, parseGoMove } from './games/go/prompt.js';
+import { HitchhikerEngine } from './games/hitchhiker/engine.js';
+import { buildHHPrompt, buildHHRetryPrompt, parseHHMove } from './games/hitchhiker/prompt.js';
+import { MazeEngine } from './games/maze/engine.js';
+import { buildMazePrompt, buildMazeRetryPrompt, parseMazeMove } from './games/maze/prompt.js';
 import { createProvider } from './providers/registry.js';
 
 export class MatchManager {
@@ -118,6 +126,10 @@ class Match {
   private pokerEngine: PokerEngine | null = null;
   private tqEngine: TwentyQuestionsEngine | null = null;
   private mqEngine: MysticQuestEngine | null = null;
+  private zorkEngine: ZorkEngine | null = null;
+  private goEngine: GoEngine | null = null;
+  private hhEngine: HitchhikerEngine | null = null;
+  private mazeEngine: MazeEngine | null = null;
   private socket: Socket;
   private status: MatchStatus = 'active';
   private moveHistory: MoveRecord[] = [];
@@ -149,6 +161,10 @@ class Match {
   private get isPoker(): boolean { return this.config.game === 'poker'; }
   private get isTQ(): boolean { return this.config.game === 'twentyquestions'; }
   private get isMQ(): boolean { return this.config.game === 'mysticquest'; }
+  private get isZork(): boolean { return this.config.game === 'zork'; }
+  private get isGo(): boolean { return this.config.game === 'go'; }
+  private get isHH(): boolean { return this.config.game === 'hitchhiker'; }
+  private get isMaze(): boolean { return this.config.game === 'maze'; }
   private get isChess(): boolean { return this.config.game === 'chess' || !this.config.game; }
 
   constructor(config: MatchConfig, socket: Socket) {
@@ -167,6 +183,10 @@ class Match {
       case 'poker': this.pokerEngine = new PokerEngine(); break;
       case 'twentyquestions': this.tqEngine = new TwentyQuestionsEngine(); break;
       case 'mysticquest': this.mqEngine = new MysticQuestEngine(); break;
+      case 'zork': this.zorkEngine = new ZorkEngine(); break;
+      case 'go': this.goEngine = new GoEngine(); break;
+      case 'hitchhiker': this.hhEngine = new HitchhikerEngine(); break;
+      case 'maze': this.mazeEngine = new MazeEngine(); break;
       default: this.chessEngine = new ChessEngine(); break;
     }
     this.socket = socket;
@@ -196,6 +216,10 @@ class Match {
     if (this.isPoker) return this.pokerEngine!.turn();
     if (this.isTQ) return this.tqEngine!.turn();
     if (this.isMQ) return this.mqEngine!.turn();
+    if (this.isZork) return this.zorkEngine!.turn();
+    if (this.isGo) return this.goEngine!.turn();
+    if (this.isHH) return this.hhEngine!.turn();
+    if (this.isMaze) return this.mazeEngine!.turn();
     return this.chessEngine!.turn();
   }
 
@@ -212,6 +236,10 @@ class Match {
     if (this.isPoker) return this.pokerEngine!.boardState();
     if (this.isTQ) return this.tqEngine!.boardState();
     if (this.isMQ) return this.mqEngine!.boardState();
+    if (this.isZork) return this.zorkEngine!.boardState();
+    if (this.isGo) return this.goEngine!.boardState();
+    if (this.isHH) return this.hhEngine!.boardState();
+    if (this.isMaze) return this.mazeEngine!.boardState();
     return this.chessEngine!.fen();
   }
 
@@ -225,6 +253,10 @@ class Match {
     if (this.isPoker) return this.moveHistory.map((m) => m.san).join(', ');
     if (this.isTQ) return this.moveHistory.map((m) => m.san).join('\n');
     if (this.isMQ) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isZork) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isGo) return this.moveHistory.map((m) => m.san).join(', ');
+    if (this.isHH) return this.moveHistory.map((m) => m.san).join('\n');
+    if (this.isMaze) return this.moveHistory.map((m) => m.san).join(', ');
     return this.chessEngine!.pgn();
   }
 
@@ -241,6 +273,10 @@ class Match {
     if (this.isPoker) return this.pokerEngine!.legalMoves();
     if (this.isTQ) return this.tqEngine!.legalMoves();
     if (this.isMQ) return this.mqEngine!.legalMoves();
+    if (this.isZork) return this.zorkEngine!.legalMoves();
+    if (this.isGo) return this.goEngine!.legalMoves();
+    if (this.isHH) return this.hhEngine!.legalMoves();
+    if (this.isMaze) return this.mazeEngine!.legalMoves();
     return this.chessEngine!.legalMovesUci();
   }
 
@@ -257,6 +293,10 @@ class Match {
     if (this.isPoker) return this.pokerEngine!.isGameOver();
     if (this.isTQ) return this.tqEngine!.isGameOver();
     if (this.isMQ) return this.mqEngine!.isGameOver();
+    if (this.isZork) return this.zorkEngine!.isGameOver();
+    if (this.isGo) return this.goEngine!.isGameOver();
+    if (this.isHH) return this.hhEngine!.isGameOver();
+    if (this.isMaze) return this.mazeEngine!.isGameOver();
     return this.chessEngine!.isGameOver();
   }
 
@@ -285,10 +325,10 @@ class Match {
       ) };
     }
     if (this.isC4) {
-      return { prompt: buildConnectFourPrompt(turn === 'w' ? 'Red' : 'Yellow', this.c4Engine!.boardForPrompt(), legalMoves) };
+      return { prompt: buildConnectFourPrompt(turn === 'w' ? 'Red' : 'Yellow', this.c4Engine!.boardForPrompt(), legalMoves, this.moveHistory) };
     }
     if (this.isDAB) {
-      return { prompt: buildDotsAndBoxesPrompt(turn === 'w' ? 'W' : 'B', this.dabEngine!.boardForPrompt(), legalMoves) };
+      return { prompt: buildDotsAndBoxesPrompt(turn === 'w' ? 'W' : 'B', this.dabEngine!.boardForPrompt(), legalMoves, this.moveHistory) };
     }
     if (this.isBS) {
       return buildBattleshipPrompt(
@@ -305,16 +345,28 @@ class Match {
       return { prompt: buildDebatePrompt(this.debateEngine!.boardForPrompt()) };
     }
     if (this.isRisk) {
-      return { prompt: buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves) };
+      return buildRiskPrompt(this.riskEngine!.boardForPrompt(), legalMoves, this.moveHistory);
     }
     if (this.isPoker) {
-      return buildPokerPrompt(this.pokerEngine!.boardForPrompt(turn), legalMoves);
+      return buildPokerPrompt(this.pokerEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
     }
     if (this.isTQ) {
       return buildTQPrompt(this.tqEngine!.boardForPrompt(turn), legalMoves);
     }
     if (this.isMQ) {
-      return buildMQPrompt(this.mqEngine!.boardForPrompt(turn), legalMoves);
+      return buildMQPrompt(this.mqEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
+    }
+    if (this.isZork) {
+      return buildZorkPrompt(this.zorkEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
+    }
+    if (this.isGo) {
+      return buildGoPrompt(this.goEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
+    }
+    if (this.isHH) {
+      return buildHHPrompt(this.hhEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
+    }
+    if (this.isMaze) {
+      return buildMazePrompt(this.mazeEngine!.boardForPrompt(turn), legalMoves, this.moveHistory);
     }
     return { prompt: buildChessPrompt({
       color: turn === 'w' ? 'White' : 'Black',
@@ -338,6 +390,10 @@ class Match {
     if (this.isPoker) return buildPokerRetryPrompt(invalidMove, legalMoves);
     if (this.isTQ) return buildTQRetryPrompt(invalidMove, legalMoves);
     if (this.isMQ) return buildMQRetryPrompt(invalidMove, legalMoves);
+    if (this.isZork) return buildZorkRetryPrompt(invalidMove, legalMoves);
+    if (this.isGo) return buildGoRetryPrompt(invalidMove, legalMoves);
+    if (this.isHH) return buildHHRetryPrompt(invalidMove, legalMoves);
+    if (this.isMaze) return buildMazeRetryPrompt(invalidMove, legalMoves);
     return buildRetryPrompt({ invalidMove, legalMoves, fen: this.chessEngine!.fen() });
   }
 
@@ -394,6 +450,22 @@ class Match {
     }
     if (this.isMQ) {
       const p = parseMQMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isZork) {
+      const p = parseZorkMove(raw);
+      return p || null;
+    }
+    if (this.isGo) {
+      const p = parseGoMove(raw);
+      return p && legalMoves.includes(p) ? p : null;
+    }
+    if (this.isHH) {
+      const p = parseHHMove(raw);
+      return p || null;
+    }
+    if (this.isMaze) {
+      const p = parseMazeMove(raw);
       return p && legalMoves.includes(p) ? p : null;
     }
     // Chess: UCI primary + SAN fallback
@@ -473,6 +545,26 @@ class Match {
       if (!r) return null;
       return { san: r.san, captured: r.captured, from: move, to: move };
     }
+    if (this.isZork) {
+      const r = this.zorkEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isGo) {
+      const r = this.goEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isHH) {
+      const r = this.hhEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
+    if (this.isMaze) {
+      const r = this.mazeEngine!.makeMove(move);
+      if (!r) return null;
+      return { san: r.san, captured: r.captured, from: move, to: move };
+    }
     const r = this.chessEngine!.makeMove(move);
     if (!r) return null;
     return { san: r.san, captured: r.captured, from: r.from, to: r.to };
@@ -541,6 +633,26 @@ class Match {
       if (s === 'white_wins') this.endGame('white', 'white_wins', 'Red hero triumphs');
       else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Blue hero triumphs');
       else this.endGame('draw', 'draw', 'Mystic Quest ends in a draw');
+    } else if (this.isZork) {
+      const s = this.zorkEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Adventurer 1 collected all treasures!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Adventurer 2 collected all treasures!');
+      else this.endGame('draw', 'draw', 'Zork race ends in a draw');
+    } else if (this.isGo) {
+      const s = this.goEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'White wins by area!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Black wins by area!');
+      else this.endGame('draw', 'draw', 'Go game drawn');
+    } else if (this.isHH) {
+      const s = this.hhEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Player 1 reached the Heart of Gold!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Player 2 reached the Heart of Gold!');
+      else this.endGame('draw', 'draw', 'Neither reached the Heart of Gold');
+    } else if (this.isMaze) {
+      const s = this.mazeEngine!.gameStatus();
+      if (s === 'white_wins') this.endGame('white', 'white_wins', 'Runner 1 escaped the maze!');
+      else if (s === 'black_wins') this.endGame('black', 'black_wins', 'Runner 2 escaped the maze!');
+      else this.endGame('draw', 'draw', 'Neither escaped the maze');
     } else {
       if (this.chessEngine!.gameStatus() === 'checkmate') {
         this.endGame(turn === 'w' ? 'white' : 'black', 'checkmate',
@@ -745,10 +857,22 @@ class Match {
       }
 
       // Fallback: auto-pick a legal move for games where forfeiting
-      // would be pointless (Battleship, Dots & Boxes, Tic-Tac-Toe).
+      // would be pointless (Battleship, Dots & Boxes, Tic-Tac-Toe, Zork).
       if (!moveStr && this.running && (this.isBS || this.isDAB || this.isTTT) && legalMoves.length > 0) {
         moveStr = legalMoves[Math.floor(Math.random() * legalMoves.length)];
         console.log(`[Arena] Auto-pick fallback: ${moveStr}`);
+      }
+      if (!moveStr && this.running && this.isZork) {
+        moveStr = 'LOOK';
+        console.log(`[Arena] Zork fallback: LOOK`);
+      }
+      if (!moveStr && this.running && this.isHH) {
+        moveStr = 'LOOK';
+        console.log(`[Arena] Hitchhiker fallback: LOOK`);
+      }
+      if (!moveStr && this.running && this.isMaze && legalMoves.length > 0) {
+        moveStr = legalMoves[0];
+        console.log(`[Arena] Maze fallback: ${moveStr}`);
       }
 
       if (!moveStr || !this.running) {

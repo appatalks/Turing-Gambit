@@ -17,13 +17,18 @@ function normalizePokerAction(value: string): string | null {
   return POKER_ACTIONS.includes(normalized as typeof POKER_ACTIONS[number]) ? normalized : null;
 }
 
-export function buildPokerPrompt(board: string, legalMoves: string[]): { system?: string; prompt: string } {
-  const system = 'You are playing Texas Hold\'em Poker.';
-  const prompt = `${board}
+export function buildPokerPrompt(board: string, legalMoves: string[], recentMoves?: { san: string }[]): { system?: string; prompt: string } {
+  const system = 'You are playing Texas Hold\'em Poker. Think about pot odds, position, hand strength, and opponent tendencies. Never reveal or infer hidden cards.';
 
+  const history = recentMoves && recentMoves.length > 0
+    ? `\nRecent hand history (latest last):\n${recentMoves.slice(-15).map((m) => `  ${m.san}`).join('\n')}\n`
+    : '';
+
+  const prompt = `${board}
+${history}
 Legal actions: ${legalMoves.join(', ')}
 
-Choose exactly one legal action. Never reveal or infer hidden opponent cards.
+Choose exactly one legal action.
 Reply with: MOVE: <action>`;
 
   return { system, prompt };

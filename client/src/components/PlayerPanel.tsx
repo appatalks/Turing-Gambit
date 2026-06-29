@@ -1,8 +1,10 @@
-import type { ProviderConfig, MatchMetrics, CapturedPieces } from '../types';
+import type { ProviderConfig, MatchMetrics, CapturedPieces, GameType } from '../types';
 import { ThinkingIndicator } from './ThinkingIndicator';
+import { playerLabel, playerIcon } from '../lib/games';
 
 interface Props {
   color: 'white' | 'black';
+  game?: GameType;
   provider: ProviderConfig;
   metrics: MatchMetrics;
   captured: CapturedPieces;
@@ -28,6 +30,7 @@ function sortPieces(pieces: string[]): string[] {
 
 export function PlayerPanel({
   color,
+  game,
   provider,
   metrics,
   captured,
@@ -35,6 +38,8 @@ export function PlayerPanel({
   isActive,
 }: Props) {
   const isWhite = color === 'white';
+  const name = playerLabel(game, color);
+  const icon = playerIcon(game, color);
   const avgLatency = isWhite ? metrics.whiteAvgLatency : metrics.blackAvgLatency;
   const invalidMoves = isWhite ? metrics.whiteInvalidMoves : metrics.blackInvalidMoves;
   const totalTokens = isWhite ? metrics.whiteTotalTokens : metrics.blackTotalTokens;
@@ -45,9 +50,9 @@ export function PlayerPanel({
     <div className={`glass player-panel ${isActive ? 'glass-glow' : ''}`}>
       {/* Header */}
       <div className="panel-header">
-        <span className="piece-icon">{isWhite ? '♔' : '♚'}</span>
+        <span className="piece-icon">{icon}</span>
         <div>
-          <div className="panel-title">{isWhite ? 'White' : 'Black'}</div>
+          <div className="panel-title">{name}</div>
           <div className="panel-model mono">
             {provider.type === 'human' ? 'You' : provider.model}
           </div>

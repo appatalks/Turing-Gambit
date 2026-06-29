@@ -1,4 +1,4 @@
-export function buildRiskPrompt(board: string, legalMoves: string[]): string {
+export function buildRiskPrompt(board: string, legalMoves: string[], recentMoves?: { san: string }[]): { system?: string; prompt: string } {
   let phaseHelp = '';
   let example = '';
   if (/REINFORCE/i.test(legalMoves[0] || '')) {
@@ -19,10 +19,14 @@ Format: MOVE: FORTIFY <FROM> <TO>   or   MOVE: END_TURN`;
     ? `\nLegal moves: ${legalMoves.join(' | ')}`
     : `\n(${legalMoves.length} legal moves available — see options above.)`;
 
-  return `You are playing RISK, the world-conquest strategy game. Win by capturing every territory.
+  const history = recentMoves && recentMoves.length > 0
+    ? `\nRecent actions (latest last):\n${recentMoves.slice(-10).map((m) => `  ${m.san}`).join('\n')}\n`
+    : '';
 
-${board}
+  const system = 'You are a RISK general. Conquer every territory to win. Think about which borders to reinforce, when to attack vs. consolidate, and how to avoid overextending.';
 
+  const prompt = `${board}
+${history}
 ${phaseHelp}
 ${list}
 
@@ -32,6 +36,8 @@ RESPONSE RULES (important):
 - Copy a move verbatim from the legal list. Do not invent territory codes.
 Example reply:
 ${example}`;
+
+  return { system, prompt };
 }
 
 export function buildRiskRetryPrompt(invalidMove: string, legalMoves: string[]): string {

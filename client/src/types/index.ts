@@ -22,7 +22,8 @@ export interface ProviderConfig {
 
 export type GameType = 'chess' | 'checkers' | 'wargames' | 'tictactoe'
   | 'connectfour' | 'dotsandboxes' | 'battleship' | 'prisonersdilemma' | 'debate' | 'risk'
-  | 'poker' | 'twentyquestions' | 'mysticquest';
+  | 'poker' | 'twentyquestions' | 'mysticquest' | 'zork'
+  | 'go' | 'hitchhiker' | 'maze';
 
 export interface MatchConfig {
   game: GameType;

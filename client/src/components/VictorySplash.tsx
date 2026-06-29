@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { MatchState } from '../types';
+import { playerLabel, playerIcon } from '../lib/games';
 
 interface Props {
   state: MatchState;
@@ -16,9 +17,7 @@ export function VictorySplash({ state, onNewMatch }: Props) {
   const isDraw = winner === 'draw';
   const winnerLabel = isDraw
     ? 'Draw'
-    : winner === 'white'
-      ? 'White wins'
-      : 'Black wins';
+    : `${playerLabel(state.game, winner === 'white' ? 'w' : 'b')} wins`;
   const winnerModel = isDraw
     ? null
     : winner === 'white'
@@ -30,7 +29,7 @@ export function VictorySplash({ state, onNewMatch }: Props) {
       ? black
       : white;
 
-  const icon = isDraw ? '½–½' : winner === 'white' ? '♔' : '♚';
+  const icon = isDraw ? '½–½' : playerIcon(state.game, winner === 'white' ? 'w' : 'b');
   const accentClass = isDraw
     ? 'splash-draw'
     : winner === 'white'
@@ -62,11 +61,11 @@ export function VictorySplash({ state, onNewMatch }: Props) {
         <div className="splash-stats">
           <StatPill label="Moves" value={metrics.totalMoves} />
           <StatPill
-            label="White time"
+            label={`${playerLabel(state.game, 'w')} time`}
             value={formatTime(metrics.whiteAvgLatency * Math.max(1, Math.ceil(metrics.totalMoves / 2)))}
           />
           <StatPill
-            label="Black time"
+            label={`${playerLabel(state.game, 'b')} time`}
             value={formatTime(metrics.blackAvgLatency * Math.max(1, Math.floor(metrics.totalMoves / 2)))}
           />
           {(metrics.whiteInvalidMoves > 0 || metrics.blackInvalidMoves > 0) && (

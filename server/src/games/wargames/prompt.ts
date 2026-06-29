@@ -7,16 +7,6 @@ export interface WargamesPromptInput {
   moveHistory: MoveRecord[];
 }
 
-// Randomized strategic doctrines to vary AI behavior between games
-const DOCTRINES = [
-  'AGGRESSIVE FIRST STRIKE: Prioritize overwhelming offense. Use MIRV and SLBM to maximize destruction quickly.',
-  'FLEXIBLE RESPONSE: Balance offense and defense. Counter enemy strikes, exploit undefended targets.',
-  'COUNTERFORCE: Target the enemy systematically. Use BOMBER to strip defenses, then ICBM the weakened targets.',
-  'DETERRENCE & DE-ESCALATION: Favor defense and negotiation. Strike only when strategically necessary.',
-  'DECAPITATION: Concentrate firepower. Use MIRV to cripple multiple targets in single strikes.',
-  'ATTRITION WARFARE: Steady pressure. Mix all triad options to wear down the enemy over time.',
-];
-
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -28,20 +18,19 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function buildWargamesPrompt(input: WargamesPromptInput): string {
   const recentMoves = input.moveHistory.slice(-10).map((m) => m.san).join('\n');
-  // Pick a doctrine pseudo-randomly per side (stable-ish via color hash + randomness)
-  const doctrine = DOCTRINES[Math.floor(Math.random() * DOCTRINES.length)];
   // Shuffle move order so the model doesn't always anchor on the first option
   const shuffledMoves = shuffle(input.legalMoves);
 
   return `GLOBAL THERMONUCLEAR WAR — You command ${input.color}.
 
-STRATEGIC DOCTRINE: ${doctrine}
+Your goal: destroy the enemy's 8 installations while defending your own. You win if the enemy has none left. If both sides' installations are destroyed, it's mutual annihilation (draw). You may also NEGOTIATE to attempt a ceasefire (only works if both sides agree).
+
+Weapons: ICBM (single target), SLBM (submarine-launched), BOMBER (slower but reliable), MIRV (hits 2 targets), STRIKE (direct hit).
+Defense: DEFEND <target_number> to protect an installation.
 
 ${input.board}
 
 ${recentMoves ? `Recent actions:\n${recentMoves}\n` : ''}Your options: ${shuffledMoves.join(', ')}
-
-Make a decisive, strategic choice that fits your doctrine. Vary your approach.
 
 IMPORTANT: Your FIRST line must be your action:
 MOVE: <action>

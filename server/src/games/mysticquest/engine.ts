@@ -162,7 +162,7 @@ export class MysticQuestEngine {
       `terrain=${terrain}`,
       `resources=${resources}`,
       `pickups=${pickups}`,
-      `heroes=${heroState('w')}|${heroState('b')}`,
+      `heroes=${heroState('w')}&${heroState('b')}`,
       `monsters=${monsters}`,
     ].join('|');
   }

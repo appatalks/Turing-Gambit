@@ -1,4 +1,5 @@
 import type { MatchState } from '../types';
+import { playerLabel, playerIcon } from '../lib/games';
 
 interface Props {
   state: MatchState;
@@ -14,13 +15,13 @@ export function MetricsPanel({ state }: Props) {
       {winner && (
         <div className="result-banner animate-in">
           <span className="result-icon">
-            {winner === 'draw' ? '½—½' : winner === 'white' ? '♔' : '♚'}
+            {winner === 'draw' ? '½—½' : playerIcon(state.game, winner === 'white' ? 'w' : 'b')}
           </span>
           <div>
             <div className="result-text">
               {winner === 'draw'
                 ? 'Draw'
-                : `${winner.charAt(0).toUpperCase() + winner.slice(1)} wins`}
+                : `${playerLabel(state.game, winner === 'white' ? 'w' : 'b')} wins`}
             </div>
             {endReason && <div className="result-reason text-secondary">{endReason}</div>}
           </div>
@@ -30,17 +31,17 @@ export function MetricsPanel({ state }: Props) {
       <div className="metrics-grid">
         <MetricCard label="Total Moves" value={metrics.totalMoves} />
         <MetricCard
-          label="White Avg Latency"
+          label={`${playerLabel(state.game, 'w')} Avg Latency`}
           value={metrics.whiteAvgLatency > 0 ? `${(metrics.whiteAvgLatency / 1000).toFixed(1)}s` : '—'}
         />
         <MetricCard
-          label="Black Avg Latency"
+          label={`${playerLabel(state.game, 'b')} Avg Latency`}
           value={metrics.blackAvgLatency > 0 ? `${(metrics.blackAvgLatency / 1000).toFixed(1)}s` : '—'}
         />
-        <MetricCard label="White Tokens" value={metrics.whiteTotalTokens || '—'} />
-        <MetricCard label="Black Tokens" value={metrics.blackTotalTokens || '—'} />
-        <MetricCard label="White Errors" value={metrics.whiteInvalidMoves} warn={metrics.whiteInvalidMoves > 0} />
-        <MetricCard label="Black Errors" value={metrics.blackInvalidMoves} warn={metrics.blackInvalidMoves > 0} />
+        <MetricCard label={`${playerLabel(state.game, 'w')} Tokens`} value={metrics.whiteTotalTokens || '—'} />
+        <MetricCard label={`${playerLabel(state.game, 'b')} Tokens`} value={metrics.blackTotalTokens || '—'} />
+        <MetricCard label={`${playerLabel(state.game, 'w')} Errors`} value={metrics.whiteInvalidMoves} warn={metrics.whiteInvalidMoves > 0} />
+        <MetricCard label={`${playerLabel(state.game, 'b')} Errors`} value={metrics.blackInvalidMoves} warn={metrics.blackInvalidMoves > 0} />
       </div>
 
       {state.status === 'completed' && (

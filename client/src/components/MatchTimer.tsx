@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { MatchState } from '../types';
+import { playerLabel } from '../lib/games';
 
 interface Props {
   state: MatchState;
@@ -45,8 +46,8 @@ export function MatchTimer({ state }: Props) {
   return (
     <div className="match-timer">
       <TimerCell label="Match" ms={matchTotal} />
-      <TimerCell label="White" ms={whiteTotal} active={state.thinking && state.thinkingPlayer === 'w'} />
-      <TimerCell label="Black" ms={blackTotal} active={state.thinking && state.thinkingPlayer === 'b'} />
+      <TimerCell label={playerLabel(state.game, 'w')} ms={whiteTotal} active={state.thinking && state.thinkingPlayer === 'w'} />
+      <TimerCell label={playerLabel(state.game, 'b')} ms={blackTotal} active={state.thinking && state.thinkingPlayer === 'b'} />
     </div>
   );
 }

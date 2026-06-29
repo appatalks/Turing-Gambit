@@ -14,6 +14,10 @@ import { RiskBoard } from './components/RiskBoard';
 import { PokerBoard } from './components/PokerBoard';
 import { TwentyQuestionsBoard } from './components/TwentyQuestionsBoard';
 import { MysticQuestBoard } from './components/MysticQuestBoard';
+import { ZorkBoard } from './components/ZorkBoard';
+import { GoBoard } from './components/GoBoard';
+import { HitchhikerBoard } from './components/HitchhikerBoard';
+import { MazeBoard } from './components/MazeBoard';
 import { PlayerPanel } from './components/PlayerPanel';
 import { MoveLog } from './components/MoveLog';
 import { ControlPanel } from './components/ControlPanel';
@@ -26,6 +30,7 @@ import { ThinkingTerminal } from './components/ThinkingTerminal';
 import { WindowControls } from './components/WindowControls';
 import { Scoreboard } from './components/Scoreboard';
 import { recordResult } from './lib/scoreboard';
+import { playerLabel } from './lib/games';
 import type { MatchConfig } from './types';
 import './App.css';
 
@@ -162,6 +167,7 @@ export default function App() {
         <aside className="arena-side">
           <PlayerPanel
             color="white"
+            game={matchState.game}
             provider={white}
             metrics={metrics}
             captured={capturedPieces}
@@ -184,10 +190,10 @@ export default function App() {
               {status === 'completed'
                 ? 'Game Over'
                 : isHumanTurn
-                  ? `Your move (${turn === 'w' ? 'White' : 'Black'}) — ${matchState.game === 'checkers' ? 'click a piece' : 'drag a piece'}`
+                  ? `Your move (${playerLabel(matchState.game, turn)}) — ${matchState.game === 'checkers' ? 'click a piece' : matchState.game === 'poker' ? 'choose an action below' : matchState.game === 'twentyquestions' ? 'respond below' : matchState.game === 'mysticquest' ? 'choose an action below' : matchState.game === 'prisonersdilemma' ? 'cooperate or defect' : matchState.game === 'chess' ? 'drag a piece' : 'make your move'}`
                   : thinking
-                    ? `${turn === 'w' ? 'White' : 'Black'} is thinking...`
-                    : `${turn === 'w' ? 'White' : 'Black'} to move`}
+                    ? `${playerLabel(matchState.game, turn)} is thinking...`
+                    : `${playerLabel(matchState.game, turn)} to move`}
             </span>
           </div>
           {matchState.game === 'checkers' ? (
@@ -274,6 +280,34 @@ export default function App() {
               onHumanMove={submitHumanMove}
               legalMoves={matchState.legalMoves || []}
             />
+          ) : matchState.game === 'zork' ? (
+            <ZorkBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'go' ? (
+            <GoBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'hitchhiker' ? (
+            <HitchhikerBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
+          ) : matchState.game === 'maze' ? (
+            <MazeBoard
+              boardState={fen}
+              interactive={isHumanTurn}
+              onHumanMove={submitHumanMove}
+              legalMoves={matchState.legalMoves || []}
+            />
           ) : (
             <ChessBoardView
               fen={fen}
@@ -287,6 +321,7 @@ export default function App() {
           <ControlPanel
             status={status}
             gameStatus={gameStatus}
+            game={matchState.game}
             fen={fen}
             onPause={pauseMatch}
             onResume={resumeMatch}
@@ -299,6 +334,7 @@ export default function App() {
         <aside className="arena-side">
           <PlayerPanel
             color="black"
+            game={matchState.game}
             provider={black}
             metrics={metrics}
             captured={capturedPieces}

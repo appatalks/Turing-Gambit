@@ -1,8 +1,10 @@
-import type { MatchStatus, GameStatus } from '../types';
+import type { MatchStatus, GameStatus, GameType } from '../types';
+import { playerLabel } from '../lib/games';
 
 interface Props {
   status: MatchStatus;
   gameStatus: GameStatus;
+  game?: GameType;
   fen: string;
   onPause: () => void;
   onResume: () => void;
@@ -31,6 +33,7 @@ const STATUS_LABELS: Record<GameStatus, { text: string; cls: string }> = {
 export function ControlPanel({
   status,
   gameStatus,
+  game,
   fen,
   onPause,
   onResume,
@@ -40,7 +43,13 @@ export function ControlPanel({
   const isRunning = status === 'active';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
-  const statusInfo = STATUS_LABELS[gameStatus];
+
+  const dynamicLabels: Record<string, { text: string; cls: string }> = {
+    ...STATUS_LABELS,
+    black_wins: { text: `${playerLabel(game, 'b')} Wins`, cls: 'badge-completed' },
+    white_wins: { text: `${playerLabel(game, 'w')} Wins`, cls: 'badge-completed' },
+  };
+  const statusInfo = dynamicLabels[gameStatus] || STATUS_LABELS[gameStatus];
 
   return (
     <div className="glass control-panel">

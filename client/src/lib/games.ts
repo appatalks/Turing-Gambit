@@ -40,6 +40,10 @@ export const GAMES: GameInfo[] = [
   { id: 'prisonersdilemma', icon: '🤝', name: "Prisoner's Dilemma", category: 'social', description: 'Cooperate or defect for points.' },
   { id: 'debate', icon: '⚖️', name: 'Debate', category: 'social', description: 'Argue a resolution; an AI judges.' },
   { id: 'twentyquestions', icon: '❓', name: '20 Questions', category: 'social', description: 'Guess the secret word in 20 yes/no questions.' },
+  { id: 'zork', icon: '🖥️', name: 'Zork I', category: 'strategy', description: 'Text adventure race — first to collect all treasures wins.' },
+  { id: 'go', icon: '⚫', name: 'Go (9\u00d79)', category: 'board', description: 'The ancient strategy game. Surround territory and capture stones.' },
+  { id: 'hitchhiker', icon: '🚀', name: "Hitchhiker's Guide", category: 'strategy', description: "Text adventure race through the galaxy. DON'T PANIC." },
+  { id: 'maze', icon: '🏁', name: 'Maze Race', category: 'strategy', description: 'Navigate a procedural maze — first to the exit wins.' },
 ];
 
 export const GAMES_BY_ID: Record<GameType, GameInfo> = Object.fromEntries(
@@ -55,4 +59,54 @@ export function gameLabel(id: GameType): string {
 /** Games belonging to a category, in registry order. */
 export function gamesInCategory(category: GameCategory): GameInfo[] {
   return GAMES.filter((g) => g.category === category);
+}
+
+/** Game-specific player names instead of generic "White"/"Black". */
+export function playerLabel(game: GameType | undefined, side: 'w' | 'b' | 'white' | 'black'): string {
+  const isW = side === 'w' || side === 'white';
+  switch (game) {
+    case 'chess':             return isW ? 'White' : 'Black';
+    case 'checkers':          return isW ? 'White' : 'Black';
+    case 'tictactoe':         return isW ? 'X' : 'O';
+    case 'connectfour':       return isW ? 'Red' : 'Yellow';
+    case 'dotsandboxes':      return isW ? 'Player 1' : 'Player 2';
+    case 'battleship':        return isW ? 'Fleet A' : 'Fleet B';
+    case 'wargames':          return isW ? 'West' : 'East';
+    case 'prisonersdilemma':  return isW ? 'Player A' : 'Player B';
+    case 'debate':            return isW ? 'PRO' : 'CON';
+    case 'risk':              return isW ? 'Blue' : 'Red';
+    case 'poker':             return isW ? 'Player 1' : 'Player 2';
+    case 'twentyquestions':   return isW ? 'Answerer' : 'Questioner';
+    case 'mysticquest':       return isW ? 'Red Hero' : 'Blue Hero';
+    case 'zork':              return isW ? 'Adventurer 1' : 'Adventurer 2';
+    case 'go':                 return isW ? 'White' : 'Black';
+    case 'hitchhiker':         return isW ? 'Player 1' : 'Player 2';
+    case 'maze':               return isW ? 'Runner 1' : 'Runner 2';
+    default:                  return isW ? 'White' : 'Black';
+  }
+}
+
+/** Game-specific player icon. */
+export function playerIcon(game: GameType | undefined, side: 'w' | 'b' | 'white' | 'black'): string {
+  const isW = side === 'w' || side === 'white';
+  switch (game) {
+    case 'chess':             return isW ? '♔' : '♚';
+    case 'checkers':          return isW ? '⬜' : '⬛';
+    case 'tictactoe':         return isW ? '✕' : '○';
+    case 'connectfour':       return isW ? '🔴' : '🟡';
+    case 'dotsandboxes':      return isW ? '🔵' : '🟠';
+    case 'battleship':        return isW ? '🚢' : '🚢';
+    case 'wargames':          return isW ? '🟦' : '🟥';
+    case 'prisonersdilemma':  return isW ? '🅰️' : '🅱️';
+    case 'debate':            return isW ? '👍' : '👎';
+    case 'risk':              return isW ? '🔵' : '🔴';
+    case 'poker':             return isW ? '🃏' : '🃏';
+    case 'twentyquestions':   return isW ? '🤫' : '🔍';
+    case 'mysticquest':       return isW ? '🧙' : '🧝';
+    case 'zork':              return isW ? '🧭' : '🗺️';
+    case 'go':                 return isW ? '⚪' : '⚫';
+    case 'hitchhiker':        return isW ? '🚀' : '🚀';
+    case 'maze':              return isW ? '🟦' : '🟥';
+    default:                  return isW ? '♔' : '♚';
+  }
 }
