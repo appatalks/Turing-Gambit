@@ -149,3 +149,13 @@ The Copilot provider talks to the CLI over the Agent Client Protocol (ACP), crea
 ## License
 
 MIT
+
+---
+
+## Built With Eva-Agent
+
+This project was created with technology developed in [Eva-Agent](https://github.com/appatalks/eva-agent/).
+
+<p align="center">
+  <a href="https://github.com/appatalks/eva-agent/"><img src="images/Built_with_Eva-Agent.png" alt="Built with Eva-Agent" width="420"></a>
+</p>
