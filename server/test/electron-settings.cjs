@@ -3,13 +3,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { pathToFileURL } = require('node:url');
 
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'tg-electron-e2e-'));
 app.setPath('userData', userData);
 const loadURL = BrowserWindow.prototype.loadURL;
 BrowserWindow.prototype.loadURL = function () {
   this.webContents.once('did-finish-load', () => testSettings(this));
-  return loadURL.call(this, process.env.TG_E2E_URL || 'http://127.0.0.1:43123');
+  return loadURL.call(this, process.env.TG_E2E_FILE
+    ? pathToFileURL(process.env.TG_E2E_FILE).href
+    : process.env.TG_E2E_URL || 'http://127.0.0.1:43123');
 };
 
 const timer = setTimeout(() => {
