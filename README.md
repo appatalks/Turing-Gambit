@@ -75,6 +75,8 @@ For OpenAI-compatible Chat Completions models, Turing-Gambit can switch to `max_
 
 Each player has an **Available Models** picker. Models are fetched from the selected provider (Copilot ACP, Ollama `/api/tags`, or the provider's models API). Save cloud keys in Settings, then use **Refresh Models**. Custom IDs remain editable when discovery is unavailable. Discovery lists account/server models, but does not guarantee every listed model supports chat.
 
+Model discovery only contacts approved endpoints: the standard OpenAI/Anthropic APIs, local Ollama/LM Studio ports, and server-configured endpoints. For a custom host or port, set `MODEL_ENDPOINT_ALLOWLIST` to a comma-separated list of trusted base URLs in the server environment (for example `http://localhost:8080,https://models.example.com`). The picker cannot approve an endpoint itself, and discovery does not follow redirects. Manual model IDs remain usable without discovery.
+
 **Use balanced model settings** applies conservative gameplay defaults:
 
 - OpenAI GPT-5/GPT-6 and o-series reasoning models: low reasoning effort, provider-default sampling, and 8192 completion tokens including reasoning.

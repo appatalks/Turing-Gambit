@@ -23,6 +23,12 @@ test('all HTTP provider adapters discover models and use automatic or manual set
   await once(server, 'listening');
   t.after(() => server.close());
   const endpoint = `http://127.0.0.1:${server.address().port}`;
+  const previousAllowlist = process.env.MODEL_ENDPOINT_ALLOWLIST;
+  process.env.MODEL_ENDPOINT_ALLOWLIST = endpoint;
+  t.after(() => {
+    if (previousAllowlist === undefined) delete process.env.MODEL_ENDPOINT_ALLOWLIST;
+    else process.env.MODEL_ENDPOINT_ALLOWLIST = previousAllowlist;
+  });
   const keyName = 'TG_PROVIDER_TEST_KEY';
   process.env[keyName] = 'fake-local-test-key';
   t.after(() => delete process.env[keyName]);
@@ -51,4 +57,5 @@ test('all HTTP provider adapters discover models and use automatic or manual set
   const noAuth = createProvider({ type: 'generic-openai', model: 'gpt-4o', endpoint, apiKeyEnvVar: 'CUSTOM_API_KEY', settingsMode: 'auto' });
   await noAuth.getMove({ prompt: 'Available positions: 2' });
   assert.equal(requests.at(-1).authorized, !!process.env.CUSTOM_API_KEY);
+  await assert.rejects(listProviderModels({ type: 'generic-openai', model: 'model', endpoint: 'http://127.0.0.1:1' }), /not approved/);
 });

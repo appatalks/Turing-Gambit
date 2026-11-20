@@ -20,7 +20,7 @@ test('HTTP model discovery and Socket.IO matches use the same endpoint, keys and
   await new Promise((resolve) => reservation.close(resolve));
   const child = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], {
     cwd: fileURLToPath(new URL('../', import.meta.url)),
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), MODEL_ENDPOINT_ALLOWLIST: endpoint },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(() => child.kill());

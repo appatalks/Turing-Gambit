@@ -2,6 +2,34 @@ import type { ProviderConfig } from '../types.js';
 import { listCopilotModels } from './copilot.js';
 import { providerEndpoint, type ModelOption } from './model-settings.js';
 
+function modelEndpoint(config: Pick<ProviderConfig, 'type' | 'endpoint'>): URL {
+  const endpoint = new URL(providerEndpoint(config));
+  endpoint.pathname = config.type === 'ollama'
+    ? endpoint.pathname.replace(/\/chat$/, '/tags')
+    : endpoint.pathname.replace(/\/(?:chat\/completions|messages)$/, '/models');
+  endpoint.hash = '';
+  return endpoint;
+}
+
+function approvedModelEndpoint(config: ProviderConfig): URL {
+  const requested = modelEndpoint(config).toString();
+  const approved = [
+    'https://api.openai.com',
+    'https://api.anthropic.com',
+    'http://localhost:11434', 'http://127.0.0.1:11434',
+    'http://localhost:1234', 'http://127.0.0.1:1234',
+    process.env.OLLAMA_ENDPOINT,
+    process.env.LMSTUDIO_ENDPOINT,
+    ...(process.env.MODEL_ENDPOINT_ALLOWLIST || '').split(','),
+  ];
+  for (const raw of approved) {
+    if (!raw?.trim()) continue;
+    const endpoint = modelEndpoint({ type: config.type, endpoint: raw.trim() });
+    if (endpoint.toString() === requested) return endpoint;
+  }
+  throw new Error('Model discovery endpoint is not approved. Add its base URL to MODEL_ENDPOINT_ALLOWLIST in the server environment, or enter the model ID manually.');
+}
+
 export async function listProviderModels(config: ProviderConfig, keys: Record<string, string> = {}): Promise<ModelOption[]> {
   if (config.type === 'human') return [];
   if (config.type === 'copilot') {
@@ -9,10 +37,7 @@ export async function listProviderModels(config: ProviderConfig, keys: Record<st
     if (!models.length) throw new Error('Copilot returned no models. Check CLI installation and authentication.');
     return models.map(({ modelId, name }) => ({ id: modelId, name }));
   }
-  const endpoint = new URL(providerEndpoint(config));
-  endpoint.pathname = config.type === 'ollama'
-    ? endpoint.pathname.replace(/\/chat$/, '/tags')
-    : endpoint.pathname.replace(/\/(?:chat\/completions|messages)$/, '/models');
+  const endpoint = approvedModelEndpoint(config);
   const keyName = config.apiKeyEnvVar || (
     config.type === 'openai' ? 'OPENAI_API_KEY' :
     config.type === 'anthropic' ? 'ANTHROPIC_API_KEY' :
@@ -29,7 +54,7 @@ export async function listProviderModels(config: ProviderConfig, keys: Record<st
   } else if (key) headers.Authorization = `Bearer ${key}`;
   const models: ModelOption[] = [];
   for (let page = 0; page < 20; page++) {
-    const response = await fetch(endpoint, { headers, signal: AbortSignal.timeout(15_000) });
+    const response = await fetch(endpoint, { headers, redirect: 'error', signal: AbortSignal.timeout(15_000) });
     if (!response.ok) {
       throw new Error(`Model discovery failed (HTTP ${response.status}). Check the endpoint and API key.`);
     }
