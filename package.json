@@ -1,6 +1,6 @@
 {
   "name": "turing-gambit",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "private": true,
   "main": "electron/main.cjs",
   "description": "Turing-Gambit — AI Chess Match platform",
@@ -10,6 +10,7 @@
     "email": "appatalks@users.noreply.github.com"
   },
   "scripts": {
+    "test:electron-settings": "electron server/test/electron-settings.cjs",
     "install:all": "cd server && npm install && cd ../client && npm install",
     "dev": "concurrently -n server,client -c \"#3b82f6,#10b981\" \"cd server && npm run dev\" \"cd client && npm run dev\"",
     "desktop": "concurrently --kill-others -n server,client,electron -c \"#3b82f6,#10b981,#f59e0b\" \"cd server && npm run dev\" \"cd client && npm run dev\" \"npx wait-on http://localhost:5173 && electron .\"",

@@ -113,7 +113,7 @@ export abstract class BaseProvider implements AIProvider {
     const out: number[] = [];
     let v = Math.max(256, Math.floor(start) || 256);
     while (v > 512) { out.push(v); v = Math.floor(v / 2); }
-    out.push(512, 256);
+    out.push(out.length ? 512 : v, 256);
     return [...new Set(out)];
   }
 

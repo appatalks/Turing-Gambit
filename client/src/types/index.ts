@@ -16,6 +16,7 @@ export interface ProviderConfig {
   apiKeyEnvVar?: string;
   temperature?: number;
   maxTokens?: number;
+  settingsMode?: 'auto' | 'manual';
 }
 
 // ─── Match Types ────────────────────────────────────────
@@ -166,6 +167,7 @@ export const PROVIDER_OPTIONS: {
     label: 'OpenAI Compatible',
     description: 'Any OpenAI-compatible endpoint',
     needsEndpoint: true,
+    keyEnvVar: 'CUSTOM_API_KEY',
     defaultModel: 'model-name',
   },
   {

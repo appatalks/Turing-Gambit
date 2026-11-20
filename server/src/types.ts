@@ -16,6 +16,7 @@ export interface ProviderConfig {
   apiKeyEnvVar?: string;
   temperature?: number;
   maxTokens?: number;
+  settingsMode?: 'auto' | 'manual';
 }
 
 // ─── Match Types ────────────────────────────────────────

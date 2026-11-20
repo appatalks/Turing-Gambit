@@ -4,17 +4,22 @@ import { AnthropicProvider } from './anthropic.js';
 import { OllamaProvider } from './ollama.js';
 import { CopilotProvider } from './copilot.js';
 import { isCopilotAvailable } from './copilot.js';
+import { providerEndpoint, recommendedSettings } from './model-settings.js';
 
 export function createProvider(config: ProviderConfig): AIProvider {
+  if (config.settingsMode === 'auto') {
+    const settings = recommendedSettings(config.type, config.model);
+    config = { ...config, temperature: settings.temperature, maxTokens: settings.maxTokens };
+  }
   switch (config.type) {
     case 'openai':
       return new OpenAIProvider({
-        ...config,
+        ...config, endpoint: providerEndpoint(config),
         apiKeyEnvVar: config.apiKeyEnvVar ?? 'OPENAI_API_KEY',
       });
     case 'anthropic':
       return new AnthropicProvider({
-        ...config,
+        ...config, endpoint: providerEndpoint(config),
         apiKeyEnvVar: config.apiKeyEnvVar ?? 'ANTHROPIC_API_KEY',
       });
     case 'ollama':
@@ -22,13 +27,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
     case 'lmstudio': {
       // LM Studio: OpenAI-compatible, no auth, well-known default port
       // Auto-append /v1/chat/completions when user enters just a base URL
-      let lmsEndpoint =
-        config.endpoint ||
-        process.env.LMSTUDIO_ENDPOINT ||
-        'http://localhost:1234';
-      if (!lmsEndpoint.includes('/v1/')) {
-        lmsEndpoint = lmsEndpoint.replace(/\/+$/, '') + '/v1/chat/completions';
-      }
+      const lmsEndpoint = providerEndpoint(config);
       return new OpenAIProvider({
         ...config,
         endpoint: lmsEndpoint,
@@ -37,11 +36,12 @@ export function createProvider(config: ProviderConfig): AIProvider {
     }
     case 'generic-openai': {
       // Auto-append /v1/chat/completions when user enters just a base URL
-      let genEndpoint = config.endpoint || '';
-      if (genEndpoint && !genEndpoint.includes('/v1/')) {
-        genEndpoint = genEndpoint.replace(/\/+$/, '') + '/v1/chat/completions';
-      }
-      return new OpenAIProvider({ ...config, endpoint: genEndpoint });
+      const keyName = config.apiKeyEnvVar || 'CUSTOM_API_KEY';
+      return new OpenAIProvider({
+        ...config,
+        endpoint: providerEndpoint(config),
+        apiKeyEnvVar: keyName === 'CUSTOM_API_KEY' && !process.env[keyName] ? undefined : keyName,
+      });
     }
     case 'copilot':
       return new CopilotProvider(config);

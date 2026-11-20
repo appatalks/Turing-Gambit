@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { MatchState, MatchConfig } from '../types';
-
-const SERVER_URL =
-  import.meta.env.VITE_SERVER_URL ||
-  (window.location.protocol === 'file:' ? 'http://localhost:3001' : window.location.origin);
+import { SERVER_URL } from '../lib/server-url';
 
 export interface BurstFrame {
   tick: number;
@@ -85,6 +82,7 @@ export function useSocket() {
     });
 
     socket.on('match-reset', () => {
+      setError(null);
       setMatchState(null);
       setThinkingText({ w: '', b: '' });
       setBurst(null);
@@ -133,6 +131,7 @@ export function useSocket() {
 
   const resetMatch = useCallback(() => {
     socketRef.current?.emit('reset-match');
+    setError(null);
     setMatchState(null);
   }, []);
 

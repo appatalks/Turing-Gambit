@@ -21,7 +21,7 @@ const THEMES = [
 
 const STORAGE_KEY = 'tg-api-keys';
 const THEME_KEY = 'tg-theme';
-const APP_VERSION = '1.1.3';
+const APP_VERSION = '1.1.4';
 
 function applyTheme(id: string) {
   document.documentElement.setAttribute('data-theme', id);
@@ -45,6 +45,7 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
     const saved = localStorage.getItem('tg-auto-update');
     return saved !== 'false'; // default true
   });
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   function handleApplyTheme(id: string) {
     applyTheme(id);
@@ -57,14 +58,26 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
     localStorage.setItem('tg-opacity', String(val));
   }
 
-  function handleAutoUpdate(enabled: boolean) {
-    setAutoUpdate(enabled);
-    localStorage.setItem('tg-auto-update', String(enabled));
+  async function handleAutoUpdate(enabled: boolean) {
+    try {
+      await window.electronAPI?.setAutoUpdate(enabled);
+      setAutoUpdate(enabled);
+      localStorage.setItem('tg-auto-update', String(enabled));
+      setSettingsError(null);
+    } catch (err) {
+      setSettingsError(`Could not save update preference: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
   const [visible, setVisible] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (open) {
+      setCurrentTheme(document.documentElement.getAttribute('data-theme') || 'midnight');
+      if (window.electronAPI) {
+        window.electronAPI.getAutoUpdate().then(setAutoUpdate).catch((err: unknown) => {
+          setSettingsError(`Could not read update preference: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
       try {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
         setKeys(saved);
@@ -93,14 +106,15 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
         <div className="modal-body">
           <h3>API Keys</h3>
           <p className="text-muted" style={{ fontSize: '0.75rem', marginBottom: 12 }}>
-            Keys are stored locally in your browser and sent to the server on match start.
+            Keys are stored locally and sent to the server when starting matches or refreshing models. Appearance and update preferences apply immediately; Save stores your API keys.
           </p>
 
           {KEY_FIELDS.map((f) => (
             <div className="config-field" key={f.id} style={{ marginBottom: 12 }}>
-              <label>{f.label}</label>
+              <label htmlFor={f.id}>{f.label}</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
+                  id={f.id}
                   type={visible[f.id] ? 'text' : 'password'}
                   value={keys[f.id] || ''}
                   onChange={(e) => setKeys((k) => ({ ...k, [f.id]: e.target.value }))}
@@ -135,16 +149,17 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
 
           <h3 style={{ marginTop: 18 }}>Transparency</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Opaque</span>
+            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Clear</span>
             <input
               type="range"
               min={30}
               max={100}
               value={opacity}
+              aria-label="Transparency"
               onChange={(e) => handleOpacity(+e.target.value)}
               style={{ flex: 1, accentColor: 'var(--accent)' }}
             />
-            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Clear</span>
+            <span className="text-muted" style={{ fontSize: '0.7rem' }}>Opaque</span>
             <span className="mono" style={{ fontSize: '0.75rem', width: 36 }}>{opacity}%</span>
           </div>
           <p className="text-muted" style={{ fontSize: '0.65rem', marginTop: 4 }}>
@@ -156,6 +171,7 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
             <input
               type="checkbox"
               checked={autoUpdate}
+              disabled={!window.electronAPI}
               onChange={(e) => handleAutoUpdate(e.target.checked)}
               style={{ accentColor: 'var(--accent)' }}
             />
@@ -163,7 +179,9 @@ export function SettingsModal({ open, onClose, onSave }: Props) {
           </label>
           <p className="text-muted" style={{ fontSize: '0.65rem', marginTop: 4 }}>
             v{APP_VERSION} — compares against latest GitHub release
+            {!window.electronAPI && ' (desktop app only)'}
           </p>
+          {settingsError && <p role="alert" className="text-secondary">{settingsError}</p>}
         </div>
 
         <div className="modal-footer">

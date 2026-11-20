@@ -50,6 +50,21 @@ test('reduces the budget for a genuine limit without dropping temperature', asyn
   assert.deepEqual(bodies.map(({ max_tokens, temperature }) => [max_tokens, temperature]), [[1024, 0.3], [512, 0.3]]);
 });
 
+test('a low configured budget is never increased by the retry ladder', async (t) => {
+  const bodies = mockRequests(t, [
+    rejection('max_tokens', 'invalid_value', 'max_tokens is too large: maximum is 256'),
+    [200, success],
+  ]);
+  await new OpenAIProvider({ ...config, maxTokens: 300 }).getMove({ prompt: 'Move' });
+  assert.deepEqual(bodies.map((body) => body.max_tokens), [300, 256]);
+});
+
+test('empty reasoning output reports the budget error instead of an invalid move', async (t) => {
+  const bodies = mockRequests(t, [[200, { choices: [{ message: { content: '' }, finish_reason: 'length' }] }]]);
+  await assert.rejects(new OpenAIProvider(config).getMove({ prompt: 'Move' }), /completion budget was exhausted/);
+  assert.equal(bodies.length, 1);
+});
+
 test('an unrelated request rejection ends the match without an invalid-move retry', async (t) => {
   const keyName = 'TG_MOCK_TEST_KEY';
   const previous = process.env[keyName];
