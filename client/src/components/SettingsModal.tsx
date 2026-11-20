@@ -21,7 +21,7 @@ const THEMES = [
 
 const STORAGE_KEY = 'tg-api-keys';
 const THEME_KEY = 'tg-theme';
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.3';
 
 function applyTheme(id: string) {
   document.documentElement.setAttribute('data-theme', id);

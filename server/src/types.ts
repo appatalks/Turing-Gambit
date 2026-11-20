@@ -44,6 +44,7 @@ export type GameStatus =
   | 'draw'
   | 'resigned'
   | 'invalid_move_failure'
+  | 'provider_failure'
   | 'max_moves_reached'
   | 'black_wins'
   | 'white_wins'

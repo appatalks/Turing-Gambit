@@ -68,6 +68,8 @@ Or search for **Turing-Gambit** in your application menu (GNOME, KDE, etc).
 | **LM Studio** | [LM Studio](https://lmstudio.ai) running on your computer | Free |
 | **Human (You)** | Nothing — just play! | Free |
 
+For OpenAI-compatible Chat Completions models, Turing-Gambit can switch to `max_completion_tokens` or omit `temperature` when the endpoint explicitly rejects those parameters. The exact model ID must be available to your API key on the selected endpoint. If a non-retryable request error remains, the match stops and shows the provider error instead of retrying it as an invalid move.
+
 > 🆓 **Want it completely free?** Install [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai), download a model, and pick it in Turing-Gambit. No API keys, no cost, runs entirely on your machine.
 
 ---

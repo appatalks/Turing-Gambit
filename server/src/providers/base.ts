@@ -1,5 +1,15 @@
 import type { AIProvider, MoveRequest, MoveResponse, ProviderConfig } from '../types.js';
 
+export class ProviderRequestError extends Error {
+  constructor(readonly status: number, detail: string) {
+    super(`Provider API error ${status}: ${detail}`);
+  }
+
+  get permanent(): boolean {
+    return this.status >= 400 && this.status < 500 && ![408, 409, 425, 429].includes(this.status);
+  }
+}
+
 export abstract class BaseProvider implements AIProvider {
   abstract readonly name: string;
   protected config: ProviderConfig;
@@ -48,7 +58,8 @@ export abstract class BaseProvider implements AIProvider {
    * Like chatCompletion, but starts with a generous output-token budget and
    * automatically retries with a smaller budget if the provider rejects the
    * request because the requested max_tokens / context length is too large.
-   * `buildBody(maxTokens)` returns the request body for a given token budget.
+   * `adaptRequest` may adjust provider-specific parameters and retry at the
+   * same budget. It must return true only when it changes the next request.
    */
   protected async chatCompletionAdaptive(
     endpoint: string,
@@ -56,25 +67,19 @@ export abstract class BaseProvider implements AIProvider {
     buildBody: (maxTokens: number) => object,
     extractResponse: (json: any) => { text: string; tokens?: number },
     startMaxTokens: number,
+    adaptRequest?: (status: number, error: string) => boolean,
   ): Promise<MoveResponse> {
     const candidates = this.tokenCandidates(startMaxTokens);
-    let lastErr = 'Unknown error';
-    let useMaxCompletionTokens = false;
 
-    for (let i = 0; i < candidates.length; i++) {
+    for (let i = 0; ; ) {
       const mt = candidates[i];
       const start = Date.now();
       let res: Response;
       try {
-        const body: any = buildBody(mt);
-        if (useMaxCompletionTokens && 'max_tokens' in body) {
-          delete body.max_tokens;
-          body.max_completion_tokens = mt;
-        }
         res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify(body),
+          body: JSON.stringify(buildBody(mt)),
           signal: AbortSignal.timeout(120_000),
         });
       } catch (e: any) {
@@ -90,23 +95,17 @@ export abstract class BaseProvider implements AIProvider {
       }
 
       const errText = await res.text().catch(() => 'Unknown error');
-      lastErr = `${res.status}: ${errText}`;
-
-      if (!useMaxCompletionTokens && this.isUnsupportedMaxTokensError(res.status, errText)) {
-        useMaxCompletionTokens = true;
-        console.log(`[${this.name}] max_tokens is unsupported — retrying with max_completion_tokens (${mt})`);
-        i--;
-        continue;
-      }
+      if (adaptRequest?.(res.status, errText)) continue;
 
       const canDownshift = i < candidates.length - 1 && this.isTokenLimitError(res.status, errText);
       if (canDownshift) {
-        console.log(`[${this.name}] max_tokens ${mt} rejected — retrying smaller (${candidates[i + 1]})`);
+        console.log(`[${this.name}] Token budget ${mt} rejected — retrying smaller (${candidates[++i]})`);
         continue;
       }
-      throw new Error(`Provider API error ${lastErr}`);
+      const key = this.config.apiKeyEnvVar && process.env[this.config.apiKeyEnvVar];
+      const detail = key ? errText.replaceAll(key, '[redacted]') : errText;
+      throw new ProviderRequestError(res.status, detail);
     }
-    throw new Error(`Provider API error ${lastErr}`);
   }
 
   /** Descending list of output-token budgets to try, floored at 256. */
@@ -118,17 +117,14 @@ export abstract class BaseProvider implements AIProvider {
     return [...new Set(out)];
   }
 
-  private isUnsupportedMaxTokensError(status: number, msg: string): boolean {
-    if (status !== 400 && status !== 422) return false;
-    const m = (msg || '').toLowerCase();
-    return /(?:unsupported|unknown|invalid).*max_tokens|max_tokens.*(?:unsupported|not supported|not available)|only.*max_completion_tokens|max_completion_tokens.*instead/.test(m);
-  }
-
   /** Heuristic: does this error indicate the token budget / context is too large? */
   private isTokenLimitError(status: number, msg: string): boolean {
     if (status !== 400 && status !== 422 && status !== 413) return false;
-    if (this.isUnsupportedMaxTokensError(status, msg)) return false;
-    const m = (msg || '').toLowerCase();
-    return /max_tokens|max_output|maximum.*token|output.*token|context[\s_]?length|too (large|long|many)|exceed|reduce the length/.test(m);
+    const tokenLimit = /(?:context[ _-]?(?:length|window)|max(?:imum)?[ _-]?(?:(?:completion|output)[ _-]?)?tokens|output tokens|token (?:count|limit))/i;
+    const exceedsLimit = /exceed|too (?:large|long|many|high)|at most|must be (?:less|lower)|maximum|allowed|supports up to/i;
+    const limit = tokenLimit.exec(msg);
+    return /context_length_exceeded/i.test(msg)
+      || (limit != null && exceedsLimit.test(msg.slice(limit.index + limit[0].length)))
+      || /(?:exceed|too many|maximum number of).*(?:context|tokens)|reduce (?:the |your )?(?:length|number of tokens)/i.test(msg);
   }
 }

@@ -10,7 +10,7 @@ interface Props {
 export function VictorySplash({ state, onNewMatch }: Props) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (state.status !== 'completed' || dismissed) return null;
+  if (state.status !== 'completed' || !state.winner || dismissed) return null;
 
   const { winner, endReason, metrics, white, black } = state;
 
