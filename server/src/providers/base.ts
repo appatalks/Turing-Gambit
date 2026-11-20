@@ -59,16 +59,22 @@ export abstract class BaseProvider implements AIProvider {
   ): Promise<MoveResponse> {
     const candidates = this.tokenCandidates(startMaxTokens);
     let lastErr = 'Unknown error';
+    let useMaxCompletionTokens = false;
 
     for (let i = 0; i < candidates.length; i++) {
       const mt = candidates[i];
       const start = Date.now();
       let res: Response;
       try {
+        const body: any = buildBody(mt);
+        if (useMaxCompletionTokens && 'max_tokens' in body) {
+          delete body.max_tokens;
+          body.max_completion_tokens = mt;
+        }
         res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify(buildBody(mt)),
+          body: JSON.stringify(body),
           signal: AbortSignal.timeout(120_000),
         });
       } catch (e: any) {
@@ -85,6 +91,13 @@ export abstract class BaseProvider implements AIProvider {
 
       const errText = await res.text().catch(() => 'Unknown error');
       lastErr = `${res.status}: ${errText}`;
+
+      if (!useMaxCompletionTokens && this.isUnsupportedMaxTokensError(res.status, errText)) {
+        useMaxCompletionTokens = true;
+        console.log(`[${this.name}] max_tokens is unsupported — retrying with max_completion_tokens (${mt})`);
+        i--;
+        continue;
+      }
 
       const canDownshift = i < candidates.length - 1 && this.isTokenLimitError(res.status, errText);
       if (canDownshift) {
@@ -105,9 +118,16 @@ export abstract class BaseProvider implements AIProvider {
     return [...new Set(out)];
   }
 
+  private isUnsupportedMaxTokensError(status: number, msg: string): boolean {
+    if (status !== 400 && status !== 422) return false;
+    const m = (msg || '').toLowerCase();
+    return /(?:unsupported|unknown|invalid).*max_tokens|max_tokens.*(?:unsupported|not supported|not available)|only.*max_completion_tokens|max_completion_tokens.*instead/.test(m);
+  }
+
   /** Heuristic: does this error indicate the token budget / context is too large? */
   private isTokenLimitError(status: number, msg: string): boolean {
     if (status !== 400 && status !== 422 && status !== 413) return false;
+    if (this.isUnsupportedMaxTokensError(status, msg)) return false;
     const m = (msg || '').toLowerCase();
     return /max_tokens|max_output|maximum.*token|output.*token|context[\s_]?length|too (large|long|many)|exceed|reduce the length/.test(m);
   }
