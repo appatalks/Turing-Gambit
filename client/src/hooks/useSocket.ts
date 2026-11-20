@@ -106,9 +106,9 @@ export function useSocket() {
     };
   }, []);
 
-  const startMatch = useCallback((config: MatchConfig) => {
+  const startMatch = useCallback((config: MatchConfig, keys?: Record<string, string>) => {
     setError(null);
-    socketRef.current?.emit('start-match', config);
+    socketRef.current?.emit('start-match', { ...config, keys });
   }, []);
 
   const setKeys = useCallback((keys: Record<string, string>) => {

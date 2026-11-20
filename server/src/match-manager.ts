@@ -777,6 +777,7 @@ class Match {
       let retryCount = 0;
       const invalidAttempts: string[] = [];
       let currentPrompt = '';
+      let providerError: string | undefined;
 
       if (providerConfig.type === 'human') {
         this.awaitingHuman = true;
@@ -847,7 +848,9 @@ class Match {
 
             currentPrompt = this.buildRetry(attemptStr, legalMoves);
           } catch (err: any) {
-            invalidAttempts.push(`Error: ${err.message}`);
+            providerError = err?.message ?? String(err);
+            invalidAttempts.push(`Error: ${providerError}`);
+            this.socket.emit('match-error', `${provider.name}: ${providerError}`);
             retryCount++;
             if (attempt === this.config.maxRetries) break;
             await this.delay(1000);
@@ -878,10 +881,11 @@ class Match {
       if (!moveStr || !this.running) {
         if (this.running) {
           const side = turn === 'w' ? 'White' : 'Black';
+          const detail = providerError ? ` — ${providerError}` : ` — exceeded ${this.config.maxRetries} invalid move retries`;
           this.endGame(
             turn === 'w' ? 'black' : 'white',
             'invalid_move_failure',
-            `${side} (${providerConfig.model}) forfeited — exceeded ${this.config.maxRetries} invalid move retries`,
+            `${side} (${providerConfig.model}) forfeited${detail}`,
           );
         }
         return;

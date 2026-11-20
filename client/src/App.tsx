@@ -59,9 +59,10 @@ export default function App() {
   const recordedRef = useRef<string | null>(null);
 
   const handleStart = useCallback((config: MatchConfig) => {
-    setKeys(loadSavedKeys());
+    const keys = loadSavedKeys();
+    setKeys(keys);
     lastConfigRef.current = config;
-    startMatch(config);
+    startMatch(config, keys);
   }, [setKeys, startMatch]);
 
   const toggleAutoPlay = useCallback(() => {
@@ -84,8 +85,9 @@ export default function App() {
         if (autoPlay && isAIvsAI && lastConfigRef.current) {
           const cfg = lastConfigRef.current;
           setTimeout(() => {
-            setKeys(loadSavedKeys());
-            startMatch(cfg);
+            const keys = loadSavedKeys();
+            setKeys(keys);
+            startMatch(cfg, keys);
           }, 4000);
         }
       }

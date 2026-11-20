@@ -50,7 +50,13 @@ const matchManager = new MatchManager();
 io.on('connection', (socket) => {
   console.log(`[Arena] Client connected: ${socket.id}`);
 
-  socket.on('start-match', (config) => {
+  socket.on('start-match', (payload) => {
+    const { keys, ...config } = payload ?? {};
+    if (keys && typeof keys === 'object') {
+      for (const [k, v] of Object.entries(keys)) {
+        if (typeof v === 'string' && v) process.env[k] = v;
+      }
+    }
     console.log(`[Arena] Starting match for ${socket.id}`);
     matchManager.startMatch(socket, config);
   });
