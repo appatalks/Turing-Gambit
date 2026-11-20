@@ -4,6 +4,10 @@
   "private": true,
   "main": "electron/main.cjs",
   "description": "Turing-Gambit — AI Chess Match platform",
+  "author": {
+    "name": "appatalks",
+    "email": "appatalks@users.noreply.github.com"
+  },
   "scripts": {
     "install:all": "cd server && npm install && cd ../client && npm install",
     "dev": "concurrently -n server,client -c \"#3b82f6,#10b981\" \"cd server && npm run dev\" \"cd client && npm run dev\"",
