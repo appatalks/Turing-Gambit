@@ -62,6 +62,7 @@ import { buildHHPrompt, buildHHRetryPrompt, parseHHMove } from './games/hitchhik
 import { MazeEngine } from './games/maze/engine.js';
 import { buildMazePrompt, buildMazeRetryPrompt, parseMazeMove } from './games/maze/prompt.js';
 import { createProvider } from './providers/registry.js';
+import { ProviderRequestError } from './providers/base.js';
 
 export class MatchManager {
   private matches = new Map<string, Match>();
@@ -850,11 +851,17 @@ class Match {
           } catch (err: any) {
             providerError = err?.message ?? String(err);
             invalidAttempts.push(`Error: ${providerError}`);
-            this.socket.emit('match-error', `${provider.name}: ${providerError}`);
             retryCount++;
+            if (err instanceof ProviderRequestError && err.permanent) {
+              if (!this.running) return;
+              const reason = `${provider.name} (${providerConfig.model}): ${providerError}`;
+              this.endGame(null, 'provider_failure', reason);
+              this.socket.emit('match-error', reason);
+              return;
+            }
+            this.socket.emit('match-error', `${provider.name}: ${providerError}`);
             if (attempt === this.config.maxRetries) break;
             await this.delay(1000);
-            currentPrompt = this.buildRetry(`Error: ${err.message}`, legalMoves);
           }
         }
       }
@@ -991,7 +998,7 @@ class Match {
   }
 
   private endGame(
-    winner: 'white' | 'black' | 'draw',
+    winner: 'white' | 'black' | 'draw' | null,
     gameStatus: GameStatus,
     reason: string,
   ): void {

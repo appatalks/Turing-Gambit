@@ -35,7 +35,7 @@ app.get('/api/providers', async (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '1.1.2' });
+  res.json({ status: 'ok', version: '1.1.3' });
 });
 
 app.get('/api/copilot-models', async (_req, res) => {
