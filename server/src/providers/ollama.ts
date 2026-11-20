@@ -1,13 +1,12 @@
 import { BaseProvider } from './base.js';
 import type { MoveRequest, MoveResponse } from '../types.js';
+import { providerEndpoint } from './model-settings.js';
 
 export class OllamaProvider extends BaseProvider {
   readonly name = 'Ollama';
 
   async getMove(request: MoveRequest): Promise<MoveResponse> {
-    const endpoint =
-      (this.config.endpoint || process.env.OLLAMA_ENDPOINT || 'http://localhost:11434') +
-      '/api/chat';
+    const endpoint = providerEndpoint(this.config);
 
     const messages: { role: string; content: string }[] = [];
     if (request.system) messages.push({ role: 'system', content: request.system });

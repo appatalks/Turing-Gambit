@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import type { MatchConfig, ProviderConfig, ProviderType } from '../types';
 import { PROVIDER_OPTIONS } from '../types';
 import { GAME_CATEGORIES, gamesInCategory, GAMES_BY_ID } from '../lib/games';
+import { recommendedSettings, type ModelOption } from '../../../server/src/providers/model-settings';
+import { loadSavedKeys } from './SettingsModal';
+import { apiUrl } from '../lib/server-url';
 
 interface Props {
   onStart: (config: MatchConfig) => void;
@@ -11,8 +14,8 @@ interface Props {
 
 const DEFAULT_CONFIG: MatchConfig = {
   game: 'chess',
-  white: { type: 'ollama', model: 'llama3.1' },
-  black: { type: 'ollama', model: 'llama3.1' },
+  white: { type: 'ollama', model: 'llama3.1', settingsMode: 'auto' },
+  black: { type: 'ollama', model: 'llama3.1', settingsMode: 'auto' },
   maxRetries: 5,
   moveDelayMs: 800,
   maxMoves: 200,
@@ -53,6 +56,10 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
       type,
       model: opt?.defaultModel ?? '',
       endpoint: undefined,
+      apiKeyEnvVar: opt?.keyEnvVar,
+      temperature: undefined,
+      maxTokens: undefined,
+      settingsMode: 'auto',
     });
   };
 
@@ -83,7 +90,7 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
       </aside>
 
       {/* Right — main config content */}
-      <div className="config-main">
+      <form className="config-main" onSubmit={(event) => { event.preventDefault(); onStart(config); }}>
         <div className="config-header">
           <h1 className="config-title">
             <span className="title-icon">♔</span> Turing-Gambit{' '}
@@ -126,8 +133,9 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
           <h3>Match Settings</h3>
           <div className="settings-grid">
             <div>
-              <label>Max Retries (invalid moves)</label>
+              <label htmlFor="max-retries">Max Retries (invalid moves)</label>
               <input
+                id="max-retries"
                 type="number"
                 min={0}
                 max={10}
@@ -138,8 +146,9 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
               />
             </div>
             <div>
-              <label>Move Delay (ms)</label>
+              <label htmlFor="move-delay">Move Delay (ms)</label>
               <input
+                id="move-delay"
                 type="number"
                 min={0}
                 max={10000}
@@ -151,8 +160,9 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
               />
             </div>
             <div>
-              <label>Max Moves per Side</label>
+              <label htmlFor="max-moves">Max Moves per Side</label>
               <input
+                id="max-moves"
                 type="number"
                 min={10}
                 max={500}
@@ -163,18 +173,19 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
               />
             </div>
             <div>
-              <label>Max Tokens per Move</label>
+              <label htmlFor="match-tokens">Max Tokens per Move</label>
               <input
+                id="match-tokens"
                 type="number"
                 min={256}
                 max={131072}
-                step={256}
+                step={1}
                 value={config.maxTokens ?? 8192}
                 onChange={(e) =>
                   setConfig((c) => ({ ...c, maxTokens: +e.target.value }))
                 }
               />
-              <span className="field-hint">Output budget. Auto-shrinks if a model rejects it.</span>
+              <span className="field-hint">Default for manual settings without a per-player limit. Automatic mode uses the model's balanced budget.</span>
             </div>
           </div>
         </div>
@@ -186,11 +197,11 @@ export function MatchConfigPanel({ onStart, autoPlay, onToggleAutoPlay }: Props)
               <span>🔁 Auto-play (AI vs AI rematch)</span>
             </label>
           )}
-          <button className="btn btn-primary btn-start" onClick={() => onStart(config)}>
+          <button className="btn btn-primary btn-start" type="submit">
             ▶ Start Match
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
@@ -209,24 +220,39 @@ function PlayerConfigCard({
   const isWhite = color === 'white';
   const opt = PROVIDER_OPTIONS.find((o) => o.value === provider.type);
 
-  const [copilotModels, setCopilotModels] = useState<{ modelId: string; name: string }[]>([]);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const settings = recommendedSettings(provider.type, provider.model);
+  const automatic = provider.settingsMode === 'auto';
 
   useEffect(() => {
-    if (provider.type === 'copilot') {
+    setModels([]);
+    setModelError(null);
+    if (provider.type === 'human') return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       setLoadingModels(true);
-      fetch('/api/copilot-models')
-        .then((r) => r.json())
-        .then((models: { modelId: string; name: string }[]) => {
-          setCopilotModels(models);
-          if (models.length > 0 && provider.model === 'default') {
-            onUpdate({ model: models[0].modelId });
-          }
-        })
-        .catch(() => setCopilotModels([]))
-        .finally(() => setLoadingModels(false));
-    }
-  }, [provider.type]);
+      try {
+        const response = await fetch(apiUrl('/api/models'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, keys: loadSavedKeys() }),
+          signal: controller.signal,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Model discovery failed (${response.status})`);
+        if (!Array.isArray(data.models)) throw new Error('Invalid model list from server.');
+        if (!controller.signal.aborted) setModels(data.models);
+      } catch (err) {
+        if (!controller.signal.aborted) setModelError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!controller.signal.aborted) setLoadingModels(false);
+      }
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [provider.type, provider.endpoint, provider.apiKeyEnvVar, refresh]);
 
   const isCopilot = provider.type === 'copilot';
   const isHuman = provider.type === 'human';
@@ -239,8 +265,9 @@ function PlayerConfigCard({
       </div>
 
       <div className="config-field">
-        <label>Provider</label>
+        <label htmlFor={`${color}-provider`}>Provider</label>
         <select
+          id={`${color}-provider`}
           value={provider.type}
           onChange={(e) => onTypeChange(e.target.value as ProviderType)}
         >
@@ -260,48 +287,29 @@ function PlayerConfigCard({
         </div>
       ) : (
         <>
-          {/* Model: dropdown for Copilot, text input for others */}
           <div className="config-field">
-            <label>Model</label>
-            {isCopilot ? (
-              loadingModels ? (
-                <div className="field-hint">Discovering models...</div>
-              ) : copilotModels.length > 0 ? (
-                <select
-                  value={provider.model}
-                  onChange={(e) => onUpdate({ model: e.target.value })}
-                >
-                  {copilotModels.map((m) => (
-                    <option key={m.modelId} value={m.modelId}>{m.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <>
-                  <input
-                    value={provider.model}
-                    onChange={(e) => onUpdate({ model: e.target.value })}
-                    placeholder="Model name (e.g. claude-sonnet-4.6)"
-                  />
-                  <p className="field-hint" style={{ color: 'var(--warning)' }}>
-                    Could not discover models. Is Copilot CLI installed?
-                    <br />
-                    <code>npm i -g @github/copilot && copilot auth login</code>
-                  </p>
-                </>
-              )
-            ) : (
-              <input
-                value={provider.model}
-                onChange={(e) => onUpdate({ model: e.target.value })}
-                placeholder="Model name"
-              />
-            )}
+            <label htmlFor={`${color}-model-picker`}>Available Models</label>
+            <select id={`${color}-model-picker`} value={models.some((m) => m.id === provider.model) ? provider.model : ''}
+              onChange={(e) => { if (e.target.value) onUpdate({ model: e.target.value }); }}>
+              <option value="">Custom model ID (enter below)</option>
+              {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <button className="btn btn-secondary" type="button" disabled={loadingModels}
+              onClick={() => setRefresh((value) => value + 1)}>Refresh Models</button>
+            {loadingModels && <p className="field-hint">Discovering models...</p>}
+            {modelError && <p role="alert" className="field-hint" style={{ color: 'var(--warning)' }}>{modelError} You can still enter a model ID manually.</p>}
+            <label htmlFor={`${color}-model`}>Model ID</label>
+            <input id={`${color}-model`} required value={provider.model}
+              onChange={(e) => onUpdate({ model: e.target.value })} placeholder="Exact provider model ID" />
           </div>
 
-          {opt?.needsEndpoint && (
+          {!isCopilot && (
             <div className="config-field">
-              <label>Endpoint URL</label>
+              <label htmlFor={`${color}-endpoint`}>Endpoint URL</label>
               <input
+                id={`${color}-endpoint`}
+                type="url"
+                required={provider.type === 'generic-openai'}
                 value={provider.endpoint ?? ''}
                 onChange={(e) => onUpdate({ endpoint: e.target.value || undefined })}
                 placeholder={
@@ -309,7 +317,11 @@ function PlayerConfigCard({
                     ? 'http://localhost:11434'
                     : provider.type === 'lmstudio'
                       ? 'http://localhost:1234'
-                      : 'http://host:port'
+                      : provider.type === 'openai'
+                        ? 'https://api.openai.com'
+                        : provider.type === 'anthropic'
+                          ? 'https://api.anthropic.com'
+                          : 'http://host:port'
                 }
               />
               {(provider.type === 'ollama' || provider.type === 'lmstudio') && (
@@ -320,34 +332,44 @@ function PlayerConfigCard({
             </div>
           )}
 
-          <div className="config-field-row">
+          <label className="field-hint">
+            <input type="checkbox" checked={automatic}
+              onChange={(e) => onUpdate({ settingsMode: e.target.checked ? 'auto' : 'manual', temperature: undefined, maxTokens: undefined })} />
+            Use balanced model settings
+          </label>
+          <p className="field-hint">{automatic ? settings.note : 'Advanced/manual overrides. Unsupported parameters may still be adapted by the provider.'}</p>
+          {!automatic && !isCopilot && <div className="config-field-row">
             <div className="config-field">
-              <label>Temperature</label>
+              <label htmlFor={`${color}-temperature`}>Temperature</label>
               <input
+                id={`${color}-temperature`}
                 type="number"
                 min={0}
-                max={2}
+                max={provider.type === 'anthropic' ? 1 : 2}
                 step={0.1}
                 value={provider.temperature ?? 0.3}
                 onChange={(e) => onUpdate({ temperature: +e.target.value })}
               />
             </div>
             <div className="config-field">
-              <label>Max Tokens</label>
+              <label htmlFor={`${color}-tokens`}>Max Tokens (optional)</label>
               <input
+                id={`${color}-tokens`}
                 type="number"
-                min={50}
-                max={4096}
-                step={50}
-                value={provider.maxTokens ?? 2048}
-                onChange={(e) => onUpdate({ maxTokens: +e.target.value })}
+                min={256}
+                max={131072}
+                step={1}
+                placeholder="Use match default"
+                value={provider.maxTokens ?? ''}
+                onChange={(e) => onUpdate({ maxTokens: e.target.value ? +e.target.value : undefined })}
               />
             </div>
-          </div>
+          </div>}
+          {isCopilot && <p className="field-hint">{settings.note}</p>}
 
           {opt?.keyEnvVar && (
             <p className="key-hint text-muted">
-              Requires <code>{opt.keyEnvVar}</code> in server .env
+              Set <code>{opt.keyEnvVar}</code> in Settings or the server environment.
             </p>
           )}
         </>

@@ -18,13 +18,32 @@ app.commandLine.appendSwitch('disable-gpu');
 
 // ── Auto-update check ───────────────────────────────
 
+function readPrefs() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'prefs.json'), 'utf8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    throw err;
+  }
+}
+
+ipcMain.handle('get-auto-update', () => readPrefs().autoUpdate !== false);
+ipcMain.handle('set-auto-update', (_event, enabled) => {
+  if (typeof enabled !== 'boolean') throw new Error('Update preference must be a boolean.');
+  const prefsPath = path.join(app.getPath('userData'), 'prefs.json');
+  fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
+  fs.writeFileSync(prefsPath, JSON.stringify({ ...readPrefs(), autoUpdate: enabled }));
+});
+
 function checkForUpdates() {
   // Skip if disabled in prefs
-  const prefsPath = path.join(app.getPath('userData'), 'prefs.json');
   try {
-    const prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+    const prefs = readPrefs();
     if (prefs.autoUpdate === false) return;
-  } catch {}
+  } catch (err) {
+    console.error('Cannot read update preferences:', err.message);
+    return;
+  }
 
   const url = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
   https.get(url, { headers: { 'User-Agent': 'Turing-Gambit/' + APP_VERSION } }, (res) => {
