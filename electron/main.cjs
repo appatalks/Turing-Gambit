@@ -13,6 +13,9 @@ const GITHUB_REPO = 'appatalks/Turing-Gambit';
 let mainWindow = null;
 let serverProcess = null;
 
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+
 // ── Auto-update check ───────────────────────────────
 
 function checkForUpdates() {
